@@ -1981,7 +1981,8 @@ async function syncFromGist() {
         const data = JSON.parse(content);
 
         if (data.discos && Array.isArray(data.discos)) {
-            localStorage.setItem('discos', JSON.stringify(data.discos));
+            localStorage.setItem(APP_KEY, JSON.stringify(data.discos));
+            discos = data.discos;
             renderAll();
         }
         
@@ -2007,7 +2008,7 @@ async function syncToGist() {
     if (icon) icon.classList.add('syncing');
 
     try {
-        const discos = JSON.parse(localStorage.getItem('discos') || '[]');
+        const discos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
         const payload = JSON.stringify({
             discos: discos,
             ultimaSync: new Date().toISOString()
@@ -2061,6 +2062,14 @@ document.getElementById('btn-sync-save')?.addEventListener('click', () => {
 
 document.getElementById('btn-sync-now')?.addEventListener('click', () => {
     syncToGist();
+});
+
+// Cerrar modales con botón ×
+document.querySelectorAll('.close-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const modalId = btn.getAttribute('data-close');
+        document.getElementById(modalId)?.classList.add('hidden');
+    });
 });
 
 // ============================================
