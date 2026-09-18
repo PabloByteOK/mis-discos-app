@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mis Discos - Aniversarios</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Mis Discos</h1>
+            <button id="btn-sync" class="header-btn" title="Sync con GitHub">
+                <span id="sync-icon">🔄</span>
+            </button>
+        </header>
+
+        <!-- Modal de configuración Sync -->
+        <div id="modal-sync" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Sync con GitHub</h2>
+                    <button class="close-btn" data-close="modal-sync">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="sync-info">Sincronizá tu colección entre dispositivos usando GitHub Gist.</p>
+                    
+                    <div class="form-group">
+                        <label for="sync-token">Personal Access Token</label>
+                        <input type="password" id="sync-token" placeholder="ghp_...">
+                        <small>Token con permiso <code>gist</code></small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sync-gist-id">Gist ID</label>
+                        <input type="text" id="sync-gist-id" placeholder="aa6f62f059b689ce...">
+                    </div>
+
+                    <div class="sync-status" id="sync-status"></div>
+
+                    <div class="sync-actions">
+                        <button id="btn-sync-save" class="btn-primary">Guardar config</button>
+                        <button id="btn-sync-now" class="btn-secondary">Sincronizar ahora</button>
+                    </div>
+
+                    <div class="sync-last" id="sync-last"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notificación de permiso -->
+        <div id="notification-banner" class="hidden">
+            <p>¿Querés recibir notificaciones cuando se acerque el aniversario de un disco?</p>
+            <button id="btn-allow-notif">Sí, permitir</button>
+            <button id="btn-deny-notif">Ahora no</button>
+        </div>
+
+        <!-- Toast de notificación in-app -->
+        <div id="toast-container"></div>
+
+        <!-- PANTALLA 1: Agregar Disco -->
+        <div class="screen active" id="screen-agregar">
+            <section class="add-disco">
+                <div class="search-box">
+                    <h3>Buscar por nombre</h3>
+                    <p class="search-hint">Banda y disco para buscar la fecha automáticamente</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" id="search-artista" placeholder="Nombre de la banda">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="search-album" placeholder="Nombre del disco">
+                        </div>
+                    </div>
+                    <button id="btn-search-wiki" class="btn-primary">Buscar fecha</button>
+                    <div id="search-loading" class="hidden">Buscando...</div>
+                </div>
+
+                <div class="discogs-box">
+                    <h3>O pegá un link de Discogs (opcional)</h3>
+                    <div class="form-group">
+                        <input type="text" id="discogs-url" placeholder="https://www.discogs.com/release/...">
+                        <button id="btn-fetch-discogs" class="btn-secondary">Buscar</button>
+                    </div>
+                </div>
+                
+                <form id="disco-form">
+                    <details open class="form-section">
+                        <summary class="form-section-label">Completá los datos</summary>
+                        <div id="fecha-aviso" class="hidden">
+                            <p class="fecha-aviso-text"></p>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="artista">Artista / Banda *</label>
+                                <input type="text" id="artista" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="album">Álbum / Disco *</label>
+                                <input type="text" id="album" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fecha">Fecha de lanzamiento *</label>
+                                <input type="date" id="fecha" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="anio-edicion">Año de edición</label>
+                                <input type="number" id="anio-edicion" placeholder="Ej: 1982" min="1900" max="2099">
+                            </div>
+                            <div class="form-group">
+                                <label for="formato">Formato</label>
+                                <select id="formato">
+                                    <option value="vinilo">Vinilo</option>
+                                    <option value="cd">CD</option>
+                                    <option value="cassette">Cassette</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="formato-detalle">Ejemplares / Detalle</label>
+                                <input type="text" id="formato-detalle" placeholder="2 x Vinyl, LP">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sello">Sello discográfico</label>
+                                <input type="text" id="sello">
+                            </div>
+                            <div class="form-group">
+                                <label for="genero">Género</label>
+                                <input type="text" id="genero" placeholder="Hard Rock, Pop, etc.">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="estado">Disco (Goldmine)</label>
+                                <select id="estado">
+                                    <option value="">Sin calificar</option>
+                                    <option value="M">M - Mint</option>
+                                    <option value="NM">NM - Near Mint</option>
+                                    <option value="NM-">NM- - Near Mint Minus</option>
+                                    <option value="EX+">EX+ - Excellent Plus</option>
+                                    <option value="EX">EX - Excellent</option>
+                                    <option value="EX-">EX- - Excellent Minus</option>
+                                    <option value="VG+">VG+ - Very Good Plus</option>
+                                    <option value="VG">VG - Very Good</option>
+                                    <option value="VG-">VG- - Very Good Minus</option>
+                                    <option value="G+">G+ - Good Plus</option>
+                                    <option value="G">G - Good</option>
+                                    <option value="G-">G- - Good Minus</option>
+                                    <option value="F">F - Fair</option>
+                                    <option value="P">P - Poor</option>
+                                    <option value="X">X - Junk</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="estado-tapa">Tapa</label>
+                                <select id="estado-tapa">
+                                    <option value="">Sin calificar</option>
+                                    <option value="M">M - Mint</option>
+                                    <option value="NM">NM - Near Mint</option>
+                                    <option value="EX">EX - Excelente</option>
+                                    <option value="VG">VG - Buen estado</option>
+                                    <option value="G">G - Desgaste</option>
+                                    <option value="F">F - Muy deteriorada</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tiene-insert">¿Tiene insert?</label>
+                                <select id="tiene-insert">
+                                    <option value="no">No</option>
+                                    <option value="si">Sí</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="notas">Notas / Dato curioso</label>
+                                <textarea id="notas" placeholder="Dato para tu reseña de Instagram..." rows="2"></textarea>
+                            </div>
+                        </div>
+                    </details>
+                    <details class="form-section">
+                        <summary class="form-section-label">Tapa del disco</summary>
+                        <div id="tapa-upload-area" class="tapa-upload-area">
+                            <div id="tapa-preview" class="tapa-preview hidden">
+                                <img id="tapa-preview-img" src="" alt="Vista previa">
+                                <button type="button" id="tapa-remove" class="tapa-remove-btn">✕</button>
+                            </div>
+                            <div id="tapa-placeholder" class="tapa-placeholder">
+                                <span class="tapa-icon">📷</span>
+                                <p>Subí la foto de la tapa</p>
+                            </div>
+                            <div class="tapa-buttons">
+                                <label class="btn-secondary tapa-btn">
+                                    📁 Elegir archivo
+                                    <input type="file" id="tapa-file" accept="image/*" hidden>
+                                </label>
+                                <button type="button" class="btn-secondary tapa-btn" id="btn-tapa-camera">📸 Tomar foto</button>
+                            </div>
+                        </div>
+                    </details>
+                    <details open class="form-section">
+                        <summary class="form-section-label">Precio</summary>
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label for="precio-usd">Precio (USD)</label>
+                                <input type="number" id="precio-usd" step="0.01" min="0" placeholder="Ej: 25.50" oninput="calcularPrecioArs()">
+                            </div>
+                            <div class="form-group">
+                                <label>Dólar blue compra <button type="button" onclick="fetchCotizacionBlue()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.8rem;padding:0 4px;">↻</button></label>
+                                <div id="dolar-blue-display" class="dolar-display">Cargando...</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Equivalente en ARS</label>
+                                <div id="precio-ars-display" class="dolar-display">—</div>
+                            </div>
+                        </div>
+                    </details>
+                    <details class="form-section">
+                        <summary class="form-section-label">Datos de edición (Discogs)</summary>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="runout">Matrix / Runout</label>
+                                <input type="text" id="runout" placeholder="Código zona muerta del vinilo">
+                            </div>
+                            <div class="form-group">
+                                <label for="catalogo">Nº de catálogo</label>
+                                <input type="text" id="catalogo" placeholder="Ej: AL 36184">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="barcode">Barcode</label>
+                                <input type="text" id="barcode" placeholder="Código de barras">
+                            </div>
+                            <div class="form-group">
+                                <label for="discogs-url-edit">Link Discogs</label>
+                                <input type="text" id="discogs-url-edit" placeholder="https://www.discogs.com/release/...">
+                            </div>
+                        </div>
+                    </details>
+                    <div class="form-group">
+                        <label for="resena">Reseña personal (opcional)</label>
+                        <textarea id="resena" placeholder="Tu opinión sobre el disco..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Agregar a mi colección</button>
+                </form>
+            </section>
+        </div>
+
+        <!-- PANTALLA 2: Próximos Aniversarios -->
+        <div class="screen" id="screen-aniversarios">
+            <section class="aniversarios">
+                <button id="btn-proximo-aniversario" class="btn-primary">Próximo aniversario</button>
+                <div id="lista-aniversarios">
+                    <p class="empty-message">No tenés discos cargados todavía.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- PANTALLA 3: Mi Colección -->
+        <div class="screen" id="screen-coleccion">
+            <section class="coleccion">
+                <div class="search-catalog">
+                    <input type="text" id="buscar-coleccion" placeholder="Buscar artista o álbum...">
+                </div>
+                <div class="sort-bar">
+                    <span class="sort-label">Ordenar:</span>
+                    <div class="sort-options">
+                        <button class="sort-btn active" data-sort="aniversario">Aniversario</button>
+                        <button class="sort-btn" data-sort="banda">Banda</button>
+                        <button class="sort-btn" data-sort="album">Álbum</button>
+                        <button class="sort-btn" data-sort="anio">Año</button>
+                    </div>
+                </div>
+                <div class="filtros">
+                    <button class="filter-btn active" data-filter="todos">Todos</button>
+                    <button class="filter-btn" data-filter="vinilo">Vinilos</button>
+                    <button class="filter-btn" data-filter="cd">CDs</button>
+                </div>
+                <div class="backup-buttons">
+                    <button id="btn-export-json" class="btn-secondary">JSON</button>
+                    <button id="btn-export-xml" class="btn-secondary">XML</button>
+                    <button id="btn-export-doc" class="btn-secondary">DOC</button>
+                    <button id="btn-export-pdf" class="btn-secondary">PDF</button>
+                    <label class="btn-secondary btn-import">
+                        Importar JSON
+                        <input type="file" id="btn-import" accept=".json" hidden>
+                    </label>
+                </div>
+                <div id="lista-coleccion">
+                    <p class="empty-message">Vacío... ¿Empezamos?</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-screen="screen-agregar">
+                <span class="nav-icon">+</span>
+                <span class="nav-label">Agregar</span>
+            </button>
+            <button class="nav-btn" data-screen="screen-aniversarios">
+                <span class="nav-icon">🎂</span>
+                <span class="nav-label">Aniversarios</span>
+            </button>
+            <button class="nav-btn" data-screen="screen-coleccion">
+                <span class="nav-icon">💿</span>
+                <span class="nav-label">Colección</span>
+            </button>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
