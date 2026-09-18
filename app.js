@@ -3,7 +3,7 @@
 // ============================================
 
 const APP_KEY = 'mis_discos_app';
-const PASS_HASH = 'eee1c1ade6525d2463185a68156723b98306835f88a8d988c82fcf6d8baf85da';
+const PASS_HASH = '9674b1f53ad3b01c8b4eeab981da48a47549f11f6ae31acc27099325c6beae32';
 
 // ============================================
 // LOGIN
