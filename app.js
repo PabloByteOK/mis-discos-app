@@ -1961,6 +1961,18 @@ function updateSyncLast() {
     }
 }
 
+function mergeDiscos(local, gist) {
+    const merged = [...local];
+    const localKeys = new Set(local.map(d => `${d.artista}|${d.album}`.toLowerCase()));
+    for (const d of gist) {
+        const key = `${d.artista}|${d.album}`.toLowerCase();
+        if (!localKeys.has(key)) {
+            merged.push(d);
+        }
+    }
+    return merged;
+}
+
 async function syncFromGist() {
     const { token, gistId } = getSyncConfig();
     if (!token || !gistId) return;
@@ -1980,9 +1992,19 @@ async function syncFromGist() {
         const content = gist.files[fileName].content;
         const data = JSON.parse(content);
 
-        if (data.discos && Array.isArray(data.discos)) {
-            localStorage.setItem(APP_KEY, JSON.stringify(data.discos));
-            discos = data.discos;
+        const localDiscos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
+        const gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
+
+        if (gistDiscos.length === 0 && localDiscos.length > 0) {
+            syncToGist();
+        } else if (gistDiscos.length > 0 && localDiscos.length === 0) {
+            localStorage.setItem(APP_KEY, JSON.stringify(gistDiscos));
+            discos = gistDiscos;
+            renderAll();
+        } else if (gistDiscos.length > 0 && localDiscos.length > 0) {
+            const merged = mergeDiscos(localDiscos, gistDiscos);
+            localStorage.setItem(APP_KEY, JSON.stringify(merged));
+            discos = merged;
             renderAll();
         }
         
