@@ -2065,7 +2065,7 @@ document.getElementById('btn-sync-now')?.addEventListener('click', () => {
 });
 
 // Cerrar modales con botón ×
-document.querySelectorAll('.close-btn').forEach(btn => {
+document.querySelectorAll('.modal-close').forEach(btn => {
     btn.addEventListener('click', () => {
         const modalId = btn.getAttribute('data-close');
         document.getElementById(modalId)?.classList.add('hidden');
