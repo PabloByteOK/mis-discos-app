@@ -7,7 +7,19 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app">
+    <!-- Pantalla de Login -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-box">
+            <h1>Mis Discos</h1>
+            <p>Ingresá la contraseña para acceder</p>
+            <input type="password" id="login-password" placeholder="Contraseña" autofocus>
+            <button id="btn-login" class="btn-primary">Entrar</button>
+            <div id="login-error" class="login-error hidden">Contraseña incorrecta</div>
+        </div>
+    </div>
+
+    <!-- App (oculta hasta login) -->
+    <div class="app hidden" id="app-main">
         <!-- Header -->
         <header class="app-header">
             <h1>Mis Discos</h1>
@@ -314,6 +326,7 @@
             </button>
         </nav>
     </div>
+    </div> <!-- cierra app-main -->
 
     <script src="app.js"></script>
 </body>

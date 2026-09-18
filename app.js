@@ -3,6 +3,48 @@
 // ============================================
 
 const APP_KEY = 'mis_discos_app';
+const PASS_HASH = 'eee1c1ade6525d2463185a68156723b98306835f88a8d988c82fcf6d8baf85da';
+
+// ============================================
+// LOGIN
+// ============================================
+
+function checkLogin() {
+    return localStorage.getItem('mis_discos_auth') === 'ok';
+}
+
+async function hashPassword(pass) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pass);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function doLogin() {
+    const input = document.getElementById('login-password').value;
+    const hash = await hashPassword(input);
+    if (hash === PASS_HASH) {
+        localStorage.setItem('mis_discos_auth', 'ok');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-main').classList.remove('hidden');
+        init();
+    } else {
+        document.getElementById('login-error').classList.remove('hidden');
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-password').focus();
+    }
+}
+
+// Arranque: ¿está logueado?
+if (checkLogin()) {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-main').classList.remove('hidden');
+} else {
+    document.getElementById('btn-login').addEventListener('click', doLogin);
+    document.getElementById('login-password').addEventListener('keydown', e => {
+        if (e.key === 'Enter') doLogin();
+    });
+}
 
 // ============================================
 // DATOS Y ESTADO
@@ -2056,5 +2098,3 @@ function init() {
         syncFromGist();
     }
 }
-
-init();
