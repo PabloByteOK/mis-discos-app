@@ -3,7 +3,7 @@
 // ============================================
 
 const APP_KEY = 'mis_discos_app';
-const PASS_HASH = '9674b1f53ad3b01c8b4eeab981da48a47549f11f6ae31acc27099325c6beae32';
+const APP_PIN = '1521';
 
 // ============================================
 // LOGIN
@@ -13,17 +13,9 @@ function checkLogin() {
     return localStorage.getItem('mis_discos_auth') === 'ok';
 }
 
-async function hashPassword(pass) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(pass);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function doLogin() {
+function doLogin() {
     const input = document.getElementById('login-password').value;
-    const hash = await hashPassword(input);
-    if (hash === PASS_HASH) {
+    if (input === APP_PIN) {
         localStorage.setItem('mis_discos_auth', 'ok');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-main').classList.remove('hidden');
