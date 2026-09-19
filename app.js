@@ -2079,7 +2079,7 @@ document.getElementById('btn-sync-save')?.addEventListener('click', () => {
 });
 
 document.getElementById('btn-sync-now')?.addEventListener('click', () => {
-    syncToGist();
+    syncFromGist();
 });
 
 // Cerrar modales con botón ×
