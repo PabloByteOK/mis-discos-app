@@ -2017,17 +2017,6 @@ async function syncFromGist() {
         if (icon) icon.classList.remove('syncing');
     }
 }
-        
-        localStorage.setItem('sync_last', new Date().toISOString());
-        updateSyncLast();
-        updateSyncStatus('Sync OK', 'ok');
-    } catch (err) {
-        console.error('Sync error:', err);
-        updateSyncStatus('Error: ' + err.message, 'error');
-    } finally {
-        if (icon) icon.classList.remove('syncing');
-    }
-}
 
 async function syncToGist() {
     const { token, gistId } = getSyncConfig();
