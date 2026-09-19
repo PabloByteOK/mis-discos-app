@@ -482,6 +482,49 @@ section h3 {
         margin: 5px 0 2px;
         padding-bottom: 3px;
     }
+
+    .disco-card {
+        padding: 8px;
+        margin-bottom: 4px;
+        gap: 8px;
+    }
+
+    .disco-tapa-mini {
+        width: 44px;
+        height: 44px;
+    }
+
+    .disco-title-row h3 {
+        font-size: 0.8rem;
+    }
+
+    .disco-info .artista {
+        font-size: 0.7rem;
+    }
+
+    .disco-info .fecha {
+        font-size: 0.62rem;
+    }
+
+    .disco-badges {
+        gap: 3px;
+        margin-top: 3px;
+    }
+
+    .mini-badge {
+        padding: 1px 4px;
+        font-size: 0.52rem;
+    }
+
+    .precio-badge {
+        padding: 1px 4px;
+        font-size: 0.52rem;
+    }
+
+    .formato-badge {
+        padding: 1px 4px;
+        font-size: 0.52rem;
+    }
 }
 
 textarea {
@@ -631,19 +674,18 @@ button#btn-fetch-discogs:hover {
 .disco-card {
     background: var(--bg-input);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 8px;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 6px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     transition: all 0.2s ease;
     animation: fadeIn 0.3s ease;
+    cursor: pointer;
 }
 
-.disco-card:hover {
-    border-color: #333;
+.disco-card:active {
     background: var(--bg-hover);
 }
 
@@ -652,25 +694,68 @@ button#btn-fetch-discogs:hover {
     to { opacity: 1; transform: translateY(0); }
 }
 
+.disco-tapa-mini {
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+}
+
+.disco-tapa-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    font-size: 1.2rem;
+}
+
+.disco-delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 4px;
+    opacity: 0.4;
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
+.disco-delete-btn:active {
+    opacity: 1;
+    color: #e74c3c;
+}
+
 .disco-info {
     flex: 1;
     min-width: 0;
+    overflow: hidden;
 }
 
-.disco-info h3 {
-    font-size: 0.95rem;
-    margin-bottom: 2px;
+.disco-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.disco-title-row h3 {
+    font-size: 0.85rem;
+    margin-bottom: 0;
     font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
 }
 
 .disco-info .artista {
     color: var(--accent-light);
     font-weight: 500;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -678,24 +763,28 @@ button#btn-fetch-discogs:hover {
 
 .disco-info .fecha {
     color: var(--text-secondary);
-    font-size: 0.75rem;
+    font-size: 0.68rem;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.disco-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
     margin-top: 4px;
 }
 
-.disco-meta {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-shrink: 0;
-}
-
 .formato-badge {
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.6rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
 }
 
 .formato-badge.vinilo {
@@ -716,13 +805,18 @@ button#btn-fetch-discogs:hover {
     border: 1px solid rgba(212, 160, 86, 0.3);
 }
 
-.estado-badge {
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.65rem;
-    font-weight: 700;
+.mini-badge {
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.estado-badge,
+.mini-badge {
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
 .estado-mint { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
@@ -734,23 +828,30 @@ button#btn-fetch-discogs:hover {
 .estado-poor { background: rgba(192, 57, 43, 0.15); color: #c0392b; border: 1px solid rgba(192, 57, 43, 0.3); }
 
 .insert-badge {
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.6rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     background: rgba(180, 180, 180, 0.1);
     color: var(--accent);
     border: 1px solid rgba(180, 180, 180, 0.2);
 }
 
-.estado-tapa-m { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); font-size: 0.6rem; }
-.estado-tapa-nm { background: rgba(52, 152, 219, 0.1); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.2); font-size: 0.6rem; }
-.estado-tapa-ex { background: rgba(155, 89, 182, 0.1); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.2); font-size: 0.6rem; }
-.estado-tapa-vg { background: rgba(241, 196, 15, 0.1); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.2); font-size: 0.6rem; }
-.estado-tapa-g { background: rgba(230, 126, 34, 0.1); color: #e67e22; border: 1px solid rgba(230, 126, 34, 0.2); font-size: 0.6rem; }
-.estado-tapa-f { background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.2); font-size: 0.6rem; }
+.cat-badge {
+    background: rgba(180, 180, 180, 0.08);
+    color: var(--text-secondary);
+    border: 1px solid rgba(180, 180, 180, 0.15);
+    font-family: monospace;
+}
+
+.tapa-badge {
+    background: rgba(155, 89, 182, 0.15);
+    color: #9b59b6;
+    border: 1px solid rgba(155, 89, 182, 0.3);
+}
+
+.estado-tapa-m { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); }
+.estado-tapa-nm { background: rgba(52, 152, 219, 0.1); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.2); }
+.estado-tapa-ex { background: rgba(155, 89, 182, 0.1); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.2); }
+.estado-tapa-vg { background: rgba(241, 196, 15, 0.1); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.2); }
+.estado-tapa-g { background: rgba(230, 126, 34, 0.1); color: #e67e22; border: 1px solid rgba(230, 126, 34, 0.2); }
+.estado-tapa-f { background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.2); }
 
 .dias-badge {
     padding: 4px 10px;
@@ -959,18 +1060,16 @@ input[readonly] {
 }
 
 .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    animation: fadeIn 0.2s ease;
-    padding: 16px;
+    flex-direction: column;
 }
 
 @keyframes modalIn {
@@ -1159,13 +1258,14 @@ details.form-section > summary {
 
 .precio-badge {
     display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.58rem;
     font-weight: 700;
     background: rgba(245, 158, 11, 0.15);
     color: #f59e0b;
     border: 1px solid rgba(245, 158, 11, 0.3);
+    white-space: nowrap;
 }
 
 /* Tapa upload */
@@ -1240,20 +1340,6 @@ details.form-section > summary {
 .tapa-btn {
     cursor: pointer;
     text-align: center;
-}
-
-/* Disco cards con tapa */
-.disco-card {
-    gap: 12px;
-}
-
-.disco-tapa-mini {
-    width: 48px;
-    height: 48px;
-    border-radius: 6px;
-    object-fit: cover;
-    flex-shrink: 0;
-    border: 1px solid var(--border);
 }
 
 .anniversary-tapa {
@@ -1393,22 +1479,8 @@ details.form-section > summary {
     }
 }
 
-/* Sync */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 16px;
-}
-
-.modal .modal-content {
+/* Sync modal */
+#modal-sync .modal-content {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;

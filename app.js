@@ -31,7 +31,6 @@ function doLogin() {
 if (checkLogin()) {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-main').classList.remove('hidden');
-    init();
 } else {
     document.getElementById('btn-login').addEventListener('click', doLogin);
     document.getElementById('login-password').addEventListener('keydown', e => {
@@ -945,46 +944,33 @@ function renderColeccion(filtro) {
     
     elements.listaColeccion.innerHTML = discosFiltrados.map(disco => {
         const anniversaryYear = getAnniversaryYear(disco.fecha);
-        
+        const fechaStr = formatDateShort(disco.fecha);
+        const parts = [];
+        if (fechaStr) parts.push(fechaStr);
+        if (disco.anioEdicion) parts.push(`Ed. ${disco.anioEdicion}`);
+        if (disco.sello) parts.push(disco.sello);
+        if (disco.genero) parts.push(disco.genero);
+        if (disco.formatoDetalle) parts.push(disco.formatoDetalle);
+
         return `
-            <div class="disco-card">
-                ${disco.tapa ? `<img class="disco-tapa-mini" src="${disco.tapa}" alt="Tapa">` : ''}
+            <div class="disco-card" onclick="editarDisco('${disco.id}')">
+                ${disco.tapa ? `<img class="disco-tapa-mini" src="${disco.tapa}" alt="Tapa" loading="lazy">` : '<div class="disco-tapa-mini disco-tapa-placeholder">🎵</div>'}
                 <div class="disco-info">
-                    <h3>${titleCase(disco.album)}</h3>
-                    <div class="artista">${titleCase(disco.artista)}</div>
-                    <div class="fecha">
-                        ${formatDateShort(disco.fecha)} · 
-                        ${disco.anioEdicion ? `Ed. ${disco.anioEdicion}` : ''}
-                        ${disco.sello ? ` · ${disco.sello}` : ''}
-                        ${disco.genero ? ` · ${disco.genero}` : ''}
-                        ${disco.formatoDetalle ? ` · ${disco.formatoDetalle}` : ''}
+                    <div class="disco-title-row">
+                        <h3>${titleCase(disco.album)}</h3>
+                        <span class="formato-badge ${disco.formato}">${disco.formato}</span>
                     </div>
-                    ${(disco.runout || disco.catalogo || disco.barcode) ? `
-                        <div class="disco-discogs">
-                            ${disco.catalogo ? `<span>Cat: ${disco.catalogo}</span>` : ''}
-                            ${disco.runout ? `<span>Runout: ${disco.runout.substring(0, 50)}${disco.runout.length > 50 ? '...' : ''}</span>` : ''}
-                            ${disco.barcode ? `<span>Barcode: ${disco.barcode}</span>` : ''}
-                        </div>
-                    ` : ''}
-                    ${disco.resena ? `
-                        <div class="resena-section">
-                            <button class="btn-resena" onclick="toggleResena('${disco.id}')">Leer mi reseña</button>
-                            <div id="resena-${disco.id}" class="resena-content hidden">
-                                <p>${disco.resena}</p>
-                                <button class="btn-copy" id="copy-${disco.id}" onclick="copiarResena('${disco.id}')">Copiar</button>
-                            </div>
-                        </div>
-                    ` : ''}
+                    <div class="artista">${titleCase(disco.artista)}</div>
+                    <div class="fecha">${parts.join(' · ')}</div>
+                    <div class="disco-badges">
+                        ${disco.precioUsd ? `<span class="precio-badge">$${parseFloat(disco.precioUsd).toLocaleString('es-AR', {minimumFractionDigits: 2})} USD</span>` : ''}
+                        ${disco.estadoTapa ? `<span class="mini-badge tapa-badge">Tapa: ${disco.estadoTapa}</span>` : ''}
+                        ${disco.estado ? `<span class="mini-badge estado-badge ${getEstadoClass(disco.estado)}">${disco.estado}</span>` : ''}
+                        ${disco.tieneInsert === 'si' ? '<span class="mini-badge insert-badge">INS</span>' : ''}
+                        ${disco.catalogo ? `<span class="mini-badge cat-badge">${disco.catalogo}</span>` : ''}
+                    </div>
                 </div>
-                <div class="disco-meta">
-                    ${disco.precioUsd ? `<span class="precio-badge">$${parseFloat(disco.precioUsd).toLocaleString('es-AR', {minimumFractionDigits: 2})} USD</span>` : ''}
-                    ${disco.tieneInsert === 'si' ? '<span class="insert-badge">INSERT</span>' : ''}
-                    ${disco.estadoTapa ? `<span class="estado-badge estado-tapa-${disco.estadoTapa.toLowerCase()}">Tapa: ${disco.estadoTapa}</span>` : ''}
-                    ${disco.estado ? `<span class="estado-badge ${getEstadoClass(disco.estado)}">${disco.estado}</span>` : ''}
-                    <span class="formato-badge ${disco.formato}">${disco.formato}</span>
-                    <button class="btn-edit" onclick="editarDisco('${disco.id}')" title="Editar disco">✏️</button>
-                    <button class="btn-delete" onclick="eliminarDisco('${disco.id}')" title="Eliminar">✕</button>
-                </div>
+                <button class="disco-delete-btn" onclick="event.stopPropagation(); eliminarDisco('${disco.id}')" title="Eliminar">✕</button>
             </div>
         `;
     }).join('');
@@ -2079,6 +2065,7 @@ document.getElementById('btn-sync-save')?.addEventListener('click', () => {
 });
 
 document.getElementById('btn-sync-now')?.addEventListener('click', () => {
+    console.log('Sync button clicked on mobile');
     syncFromGist();
 });
 
@@ -2109,4 +2096,8 @@ function init() {
     renderAll();
     verificarPermisosNotificacion();
     verificarNotificacionesHoy();
+}
+
+if (checkLogin()) {
+    init();
 }
