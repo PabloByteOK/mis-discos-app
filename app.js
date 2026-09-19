@@ -31,6 +31,7 @@ function doLogin() {
 if (checkLogin()) {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-main').classList.remove('hidden');
+    init();
 } else {
     document.getElementById('btn-login').addEventListener('click', doLogin);
     document.getElementById('login-password').addEventListener('keydown', e => {
@@ -249,11 +250,6 @@ function getAnniversaryYear(fechaLanzamiento) {
 
 function guardarDiscos() {
     localStorage.setItem(APP_KEY, JSON.stringify(discos));
-    // Auto-sync si está configurado
-    const { token, gistId } = getSyncConfig();
-    if (token && gistId) {
-        syncToGist();
-    }
 }
 
 function generarId() {
@@ -2113,11 +2109,4 @@ function init() {
     renderAll();
     verificarPermisosNotificacion();
     verificarNotificacionesHoy();
-    
-    // Sync automático al iniciar
-    const syncToken = localStorage.getItem('sync_token');
-    const syncGistId = localStorage.getItem('sync_gist_id');
-    if (syncToken && syncGistId) {
-        syncFromGist();
-    }
 }
