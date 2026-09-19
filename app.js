@@ -1978,7 +1978,7 @@ async function syncFromGist() {
         const gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
 
         if (gistDiscos.length === 0 && localDiscos.length > 0) {
-            syncToGist();
+            await syncToGist();
         } else if (gistDiscos.length > 0 && localDiscos.length === 0) {
             localStorage.setItem(APP_KEY, JSON.stringify(gistDiscos));
             discos = gistDiscos;
@@ -1988,6 +1988,7 @@ async function syncFromGist() {
             localStorage.setItem(APP_KEY, JSON.stringify(merged));
             discos = merged;
             renderAll();
+            await syncToGist();
         }
         
         localStorage.setItem('sync_last', new Date().toISOString());
