@@ -1957,39 +1957,66 @@ function mergeDiscos(local, gist) {
 
 async function syncFromGist() {
     const { token, gistId } = getSyncConfig();
-    if (!token || !gistId) return;
+    if (!token || !gistId) {
+        updateSyncStatus('Configurá token y Gist ID', 'error');
+        return;
+    }
 
     const icon = document.getElementById('sync-icon');
     if (icon) icon.classList.add('syncing');
+    updateSyncStatus('Syncing...', 'ok');
 
     try {
-        const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+        // Paso 1: Subir local al Gist
+        const localDiscos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
+        const payload = JSON.stringify({
+            discos: localDiscos,
+            ultimaSync: new Date().toISOString()
+        });
+
+        const putResp = await fetch(`https://api.github.com/gists/${gistId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: {
+                    'discos.json': { content: payload }
+                }
+            })
+        });
+
+        if (!putResp.ok) throw new Error(`Error subiendo: ${putResp.status}`);
+
+        // Paso 2: Bajar el Gist actualizado
+        const getResp = await fetch(`https://api.github.com/gists/${gistId}`, {
             headers: { 'Authorization': `token ${token}` }
         });
-        
-        if (!resp.ok) throw new Error(`Error ${resp.status}`);
-        
-        const gist = await resp.json();
+
+        if (!getResp.ok) throw new Error(`Error bajando: ${getResp.status}`);
+
+        const gist = await getResp.json();
         const fileName = Object.keys(gist.files)[0];
         const content = gist.files[fileName].content;
         const data = JSON.parse(content);
-
-        const localDiscos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
         const gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
 
-        if (gistDiscos.length === 0 && localDiscos.length > 0) {
-            await syncToGist();
-        } else if (gistDiscos.length > 0 && localDiscos.length === 0) {
-            localStorage.setItem(APP_KEY, JSON.stringify(gistDiscos));
-            discos = gistDiscos;
-            renderAll();
-        } else if (gistDiscos.length > 0 && localDiscos.length > 0) {
-            const merged = mergeDiscos(localDiscos, gistDiscos);
-            localStorage.setItem(APP_KEY, JSON.stringify(merged));
-            discos = merged;
-            renderAll();
-            await syncToGist();
-        }
+        // Paso 3: Guardar localmente
+        localStorage.setItem(APP_KEY, JSON.stringify(gistDiscos));
+        discos = gistDiscos;
+        renderAll();
+
+        localStorage.setItem('sync_last', new Date().toISOString());
+        updateSyncLast();
+        updateSyncStatus(`Sync OK (${gistDiscos.length} discos)`, 'ok');
+    } catch (err) {
+        console.error('Sync error:', err);
+        updateSyncStatus('Error: ' + err.message, 'error');
+    } finally {
+        if (icon) icon.classList.remove('syncing');
+    }
+}
         
         localStorage.setItem('sync_last', new Date().toISOString());
         updateSyncLast();
