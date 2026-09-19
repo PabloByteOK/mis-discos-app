@@ -1967,10 +1967,26 @@ async function syncFromGist() {
     updateSyncStatus('Syncing...', 'ok');
 
     try {
-        // Paso 1: Subir local al Gist
+        // Paso 1: Bajar el Gist actual
+        const getResp = await fetch(`https://api.github.com/gists/${gistId}`, {
+            headers: { 'Authorization': `token ${token}` }
+        });
+
+        if (!getResp.ok) throw new Error(`Error bajando: ${getResp.status}`);
+
+        const gist = await getResp.json();
+        const fileName = Object.keys(gist.files)[0];
+        const content = gist.files[fileName].content;
+        const data = JSON.parse(content);
+        const gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
+
+        // Paso 2: Mezclar local + gist (no pierde nada)
         const localDiscos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
+        const merged = mergeDiscos(localDiscos, gistDiscos);
+
+        // Paso 3: Subir el resultado mezclado al Gist
         const payload = JSON.stringify({
-            discos: localDiscos,
+            discos: merged,
             ultimaSync: new Date().toISOString()
         });
 
@@ -1989,27 +2005,14 @@ async function syncFromGist() {
 
         if (!putResp.ok) throw new Error(`Error subiendo: ${putResp.status}`);
 
-        // Paso 2: Bajar el Gist actualizado
-        const getResp = await fetch(`https://api.github.com/gists/${gistId}`, {
-            headers: { 'Authorization': `token ${token}` }
-        });
-
-        if (!getResp.ok) throw new Error(`Error bajando: ${getResp.status}`);
-
-        const gist = await getResp.json();
-        const fileName = Object.keys(gist.files)[0];
-        const content = gist.files[fileName].content;
-        const data = JSON.parse(content);
-        const gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
-
-        // Paso 3: Guardar localmente
-        localStorage.setItem(APP_KEY, JSON.stringify(gistDiscos));
-        discos = gistDiscos;
+        // Paso 4: Guardar localmente
+        localStorage.setItem(APP_KEY, JSON.stringify(merged));
+        discos = merged;
         renderAll();
 
         localStorage.setItem('sync_last', new Date().toISOString());
         updateSyncLast();
-        updateSyncStatus(`Sync OK (${gistDiscos.length} discos)`, 'ok');
+        updateSyncStatus(`Sync OK (${merged.length} discos)`, 'ok');
     } catch (err) {
         console.error('Sync error:', err);
         updateSyncStatus('Error: ' + err.message, 'error');
