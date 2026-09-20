@@ -926,6 +926,9 @@ function renderColeccion(filtro) {
         case 'aniversario':
             discosFiltrados.sort((a, b) => getDiasHastaAniversario(a.fecha) - getDiasHastaAniversario(b.fecha));
             break;
+        case 'reciente':
+            discosFiltrados.reverse();
+            break;
         case 'banda':
             discosFiltrados.sort((a, b) => a.artista.localeCompare(b.artista, 'es'));
             break;
