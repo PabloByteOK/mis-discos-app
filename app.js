@@ -1029,13 +1029,14 @@ function editarDisco(id) {
                 <div class="tapa-preview-modal" id="edit-tapa-container">
                     ${disco.tapa ? `<img id="edit-tapa-img" src="${disco.tapa}" alt="Tapa">` : '<div class="tapa-placeholder" style="width:100%;height:140px"><span class="tapa-icon">📷</span><p>Sin tapa</p></div>'}
                 </div>
-                <div class="tapa-buttons" style="justify-content:center;margin-bottom:12px">
+                <div class="tapa-buttons" style="justify-content:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
                     <label class="btn-secondary tapa-btn">
                         📁 Cambiar tapa
                         <input type="file" id="edit-tapa-file" accept="image/*" hidden>
                     </label>
                     <button type="button" class="btn-secondary tapa-btn" id="edit-tapa-camera">📸 Tomar foto</button>
-                    ${disco.tapa ? '<button type="button" class="btn-secondary tapa-btn" id="edit-tapa-remove">✕ Quitar tapa</button>' : ''}
+                    ${disco.discogsUrl ? '<button type="button" class="btn-secondary tapa-btn" id="edit-tapa-fetch">⬇ Descargar</button>' : ''}
+                    ${disco.tapa ? '<button type="button" class="btn-secondary tapa-btn" id="edit-tapa-remove">✕ Quitar</button>' : ''}
                 </div>
                 <div class="form-group">
                     <label>Artista / Banda</label>
@@ -1215,6 +1216,44 @@ function editarDisco(id) {
                 const container = modal.querySelector('#edit-tapa-container');
                 container.innerHTML = `<img id="edit-tapa-img" src="${dataUrl}" alt="Tapa">`;
             });
+        });
+    }
+
+    const editTapaFetch = modal.querySelector('#edit-tapa-fetch');
+    if (editTapaFetch) {
+        editTapaFetch.addEventListener('click', async () => {
+            if (!disco.discogsUrl) return;
+            editTapaFetch.textContent = '⏳ Buscando...';
+            editTapaFetch.disabled = true;
+            try {
+                const info = extraerIdDiscogs(disco.discogsUrl);
+                if (!info) throw new Error('URL inválida');
+                const typePath = info.tipo === 'master' ? 'masters' : 'releases';
+                const resp = await fetch(`https://api.discogs.com/${typePath}/${info.id}`, {
+                    headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+                });
+                if (!resp.ok) throw new Error('Discogs error');
+                const data = await resp.json();
+                if (data.images && data.images.length > 0) {
+                    const img = data.images.find(i => i.type === 'primary') || data.images[0];
+                    const tapaUrl = await descargarTapa(img.uri);
+                    if (tapaUrl) {
+                        editTapaUrl = tapaUrl;
+                        const container = modal.querySelector('#edit-tapa-container');
+                        container.innerHTML = `<img id="edit-tapa-img" src="${tapaUrl}" alt="Tapa">`;
+                    } else {
+                        throw new Error('No se pudo descargar');
+                    }
+                } else {
+                    throw new Error('Sin imágenes');
+                }
+            } catch (e) {
+                editTapaFetch.textContent = '❌ Error';
+                setTimeout(() => { editTapaFetch.textContent = '⬇ Descargar'; editTapaFetch.disabled = false; }, 2000);
+                return;
+            }
+            editTapaFetch.textContent = '✅ OK';
+            editTapaFetch.disabled = false;
         });
     }
 
@@ -2034,15 +2073,15 @@ async function syncFromGist() {
         const localDiscos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
         const merged = mergeDiscos(localDiscos, gistDiscos);
 
-        // Paso 3: Subir el resultado mezclado al Gist
+        // Paso 3: Subir el resultado mezclado al Gist (sin tapas base64)
+        const discosParaGist = merged.map(d => {
+            const { tapa, ...rest } = d;
+            return rest;
+        });
         const payload = JSON.stringify({
-            discos: merged,
+            discos: discosParaGist,
             ultimaSync: new Date().toISOString()
         });
-
-        if (payload.length > 1040000) {
-            throw new Error('Datos muy grandes (' + Math.round(payload.length / 1024) + 'KB). Eliminá tapas de algunos discos para reducir el tamaño.');
-        }
 
         const putResp = await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
@@ -2064,9 +2103,40 @@ async function syncFromGist() {
         discos = merged;
         renderAll();
 
+        // Paso 5: Re-descargar tapas faltantes de Discogs en background
+        const sinTapa = merged.filter(d => !d.tapa && d.discogsUrl);
+        if (sinTapa.length > 0) {
+            updateSyncStatus(`Sync OK — descargando ${sinTapa.length} tapas...`, 'ok');
+            for (const d of sinTapa) {
+                try {
+                    const info = extraerIdDiscogs(d.discogsUrl);
+                    if (!info) continue;
+                    const typePath = info.tipo === 'master' ? 'masters' : 'releases';
+                    const apiUrl = `https://api.discogs.com/${typePath}/${info.id}`;
+                    const resp = await fetch(apiUrl, {
+                        headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+                    });
+                    if (!resp.ok) continue;
+                    const data = await resp.json();
+                    if (data.images && data.images.length > 0) {
+                        const img = data.images.find(i => i.type === 'primary') || data.images[0];
+                        const tapaUrl = await descargarTapa(img.uri);
+                        if (tapaUrl) {
+                            d.tapa = tapaUrl;
+                            localStorage.setItem(APP_KEY, JSON.stringify(discos));
+                        }
+                    }
+                } catch (e) { /* skip */ }
+            }
+            renderAll();
+            updateSyncStatus(`Sync OK (${merged.length} discos, tapas actualizadas)`, 'ok');
+        }
+
         localStorage.setItem('sync_last', new Date().toISOString());
         updateSyncLast();
-        updateSyncStatus(`Sync OK (${merged.length} discos)`, 'ok');
+        if (sinTapa.length === 0) {
+            updateSyncStatus(`Sync OK (${merged.length} discos)`, 'ok');
+        }
     } catch (err) {
         console.error('Sync error:', err);
         updateSyncStatus('Error: ' + err.message, 'error');
@@ -2087,8 +2157,12 @@ async function syncToGist() {
 
     try {
         const discos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
+        const discosLimpios = discos.map(d => {
+            const { tapa, ...rest } = d;
+            return rest;
+        });
         const payload = JSON.stringify({
-            discos: discos,
+            discos: discosLimpios,
             ultimaSync: new Date().toISOString()
         });
 
