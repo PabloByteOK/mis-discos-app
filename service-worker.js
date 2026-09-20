@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mis-discos-v3';
+const CACHE_NAME = 'mis-discos-v4';
 const ASSETS = [
     './',
     './index.html',
