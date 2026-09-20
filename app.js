@@ -1034,6 +1034,7 @@ function editarDisco(id) {
                         📁 Cambiar tapa
                         <input type="file" id="edit-tapa-file" accept="image/*" hidden>
                     </label>
+                    <button type="button" class="btn-secondary tapa-btn" id="edit-tapa-camera">📸 Tomar foto</button>
                     ${disco.tapa ? '<button type="button" class="btn-secondary tapa-btn" id="edit-tapa-remove">✕ Quitar tapa</button>' : ''}
                 </div>
                 <div class="form-group">
@@ -1203,6 +1204,17 @@ function editarDisco(id) {
             editTapaUrl = null;
             const container = modal.querySelector('#edit-tapa-container');
             container.innerHTML = '<div class="tapa-placeholder" style="width:100%;height:140px"><span class="tapa-icon">📷</span><p>Sin tapa</p></div>';
+        });
+    }
+
+    const editTapaCamera = modal.querySelector('#edit-tapa-camera');
+    if (editTapaCamera) {
+        editTapaCamera.addEventListener('click', () => {
+            abrirWebcam((dataUrl) => {
+                editTapaUrl = dataUrl;
+                const container = modal.querySelector('#edit-tapa-container');
+                container.innerHTML = `<img id="edit-tapa-img" src="${dataUrl}" alt="Tapa">`;
+            });
         });
     }
 
@@ -1377,7 +1389,7 @@ elements.tapaRemove.addEventListener('click', () => {
 // Webcam
 let webcamStream = null;
 
-function abrirWebcam() {
+function abrirWebcam(onCapture) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -1406,7 +1418,7 @@ function abrirWebcam() {
         }
         try {
             webcamStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: facingMode },
+                video: { facingMode: facingMode, aspectRatio: { ideal: 1 } },
                 audio: false
             });
             video.srcObject = webcamStream;
@@ -1422,14 +1434,23 @@ function abrirWebcam() {
     startCamera();
 
     modal.querySelector('#webcam-capture').addEventListener('click', async () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        const size = Math.min(vw, vh);
+        const sx = (vw - size) / 2;
+        const sy = (vh - size) / 2;
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext('2d').drawImage(video, sx, sy, size, size, 0, 0, size, size);
         const dataUrl = await resizeImage(canvas.toDataURL('image/jpeg', 0.8));
-        tapaDataUrl = dataUrl;
-        elements.tapaPreviewImg.src = dataUrl;
-        elements.tapaPreview.classList.remove('hidden');
-        elements.tapaPlaceholder.classList.add('hidden');
+        if (onCapture) {
+            onCapture(dataUrl);
+        } else {
+            tapaDataUrl = dataUrl;
+            elements.tapaPreviewImg.src = dataUrl;
+            elements.tapaPreview.classList.remove('hidden');
+            elements.tapaPlaceholder.classList.add('hidden');
+        }
         closeModal();
     });
 
