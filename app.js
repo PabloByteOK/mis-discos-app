@@ -897,7 +897,7 @@ function renderAniversarios() {
                 <div class="anniversary-details">
                     <span class="artista">${titleCase(disco.artista)}</span> · 
                     ${anniversaryYear}° aniversario · 
-                    ${formatDateShort(disco.fecha)}
+                    ${formatDateShort(disco.fecha)}${disco.fecha && disco.fecha.endsWith('-01-01') ? ' <span class="fecha-badge-alert" title="Fecha no verificada — solo año conocido">⚠</span>' : ''}
                     ${disco.sello ? ` · ${disco.sello}` : ''}
                     ${disco.formatoDetalle ? ` · ${disco.formatoDetalle}` : ''}
                 </div>
@@ -950,8 +950,9 @@ function renderColeccion(filtro) {
     elements.listaColeccion.innerHTML = discosFiltrados.map(disco => {
         const anniversaryYear = getAnniversaryYear(disco.fecha);
         const fechaStr = formatDateShort(disco.fecha);
+        const fechaUnreliable = disco.fecha && disco.fecha.endsWith('-01-01');
         const parts = [];
-        if (fechaStr) parts.push(fechaStr);
+        if (fechaStr) parts.push(fechaStr + (fechaUnreliable ? ' <span class="fecha-badge-alert" title="Fecha no verificada — solo año conocido">⚠</span>' : ''));
         if (disco.anioEdicion) parts.push(`Ed. ${disco.anioEdicion}`);
         if (disco.sello) parts.push(disco.sello);
         if (disco.genero) parts.push(disco.genero);
@@ -1046,7 +1047,10 @@ function editarDisco(id) {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Fecha de lanzamiento</label>
-                        <input type="date" id="edit-fecha" value="${disco.fecha}">
+                        <div class="fecha-input-row">
+                            <input type="date" id="edit-fecha" value="${disco.fecha}">
+                            ${disco.fecha && disco.fecha.endsWith('-01-01') ? '<span class="fecha-alert" title="Fecha no verificada — solo año conocido">⚠</span>' : ''}
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Año de edición</label>
@@ -1471,6 +1475,7 @@ elements.btnSearchWiki.addEventListener('click', async () => {
         
         if (datos.fecha) {
             elements.fecha.value = datos.fecha;
+            verificarFechaAlerta();
         } else {
             alert('No encontré la fecha. Ingresala manualmente.');
             elements.fecha.focus();
@@ -1515,6 +1520,7 @@ elements.btnFetchDiscogs.addEventListener('click', async () => {
             elements.artista.value = titleCase(disco.artista);
             elements.album.value = titleCase(disco.album);
             elements.fecha.value = disco.fecha;
+            verificarFechaAlerta();
             if (disco.anioEdicion) document.getElementById('anio-edicion').value = disco.anioEdicion;
             elements.formato.value = disco.formato;
             if (disco.formatoDetalle) document.getElementById('formato-detalle').value = disco.formatoDetalle;
@@ -1607,6 +1613,18 @@ document.getElementById('buscar-coleccion').addEventListener('input', (e) => {
     currentSearch = e.target.value.trim();
     renderColeccion();
 });
+
+// Alerta de fecha poco fiable (solo año)
+function verificarFechaAlerta() {
+    const fecha = document.getElementById('fecha').value;
+    const alerta = document.getElementById('fecha-alert');
+    if (fecha && fecha.endsWith('-01-01')) {
+        alerta.classList.remove('hidden');
+    } else {
+        alerta.classList.add('hidden');
+    }
+}
+document.getElementById('fecha').addEventListener('change', verificarFechaAlerta);
 
 // Notificaciones
 elements.btnAllowNotif?.addEventListener('click', pedirPermisoNotificacion);
