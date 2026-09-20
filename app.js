@@ -139,7 +139,7 @@ function calcularPrecioArsModal(input) {
 // UTILIDADES DE IMAGEN
 // ============================================
 
-function resizeImage(dataUrl, maxSize = 400) {
+function resizeImage(dataUrl, maxSize = 300) {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -153,7 +153,7 @@ function resizeImage(dataUrl, maxSize = 400) {
             canvas.width = width;
             canvas.height = height;
             canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.7));
+            resolve(canvas.toDataURL('image/jpeg', 0.6));
         };
         img.src = dataUrl;
     });
@@ -2021,7 +2021,12 @@ async function syncFromGist() {
         const gist = await getResp.json();
         const fileName = Object.keys(gist.files)[0];
         const content = gist.files[fileName].content;
-        const data = JSON.parse(content);
+        let data;
+        try {
+            data = JSON.parse(content);
+        } catch (parseErr) {
+            throw new Error('Datos del Gist corruptos o muy grandes. Si tenés muchas tapas, eliminá algunas y subilas de nuevo.');
+        }
         const gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
 
         // Paso 2: Mezclar local + gist (no pierde nada)
@@ -2033,6 +2038,10 @@ async function syncFromGist() {
             discos: merged,
             ultimaSync: new Date().toISOString()
         });
+
+        if (payload.length > 900000) {
+            throw new Error('Datos muy grandes (' + Math.round(payload.length / 1024) + 'KB). Eliminá tapas de algunos discos para reducir el tamaño.');
+        }
 
         const putResp = await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
