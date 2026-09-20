@@ -2021,13 +2021,14 @@ async function syncFromGist() {
         const gist = await getResp.json();
         const fileName = Object.keys(gist.files)[0];
         const content = gist.files[fileName].content;
-        let data;
+        let gistDiscos = [];
         try {
-            data = JSON.parse(content);
+            const data = JSON.parse(content);
+            gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
         } catch (parseErr) {
-            throw new Error('Datos del Gist corruptos o muy grandes. Si tenés muchas tapas, eliminá algunas y subilas de nuevo.');
+            console.warn('Gist JSON corrupto, se subiran los datos locales encima');
+            gistDiscos = [];
         }
-        const gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
 
         // Paso 2: Mezclar local + gist (no pierde nada)
         const localDiscos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
