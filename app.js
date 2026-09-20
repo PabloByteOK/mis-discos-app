@@ -454,6 +454,7 @@ async function buscarEnWiki(artista, album, lang, months) {
                 }
             }
         }
+        return null;
     }
     
     let fecha = null;
@@ -746,7 +747,8 @@ async function buscarEnDiscogs(url) {
         
         const artistaNombre = data.artists?.map(a => a.name).join(', ') || '';
         const albumNombre = data.title || '';
-        const fechaRelease = data.date_released || (data.year ? `${data.year}-01-01` : '');
+        console.log('Discogs date_released:', data.date_released, '| year:', data.year);
+        const fechaRelease = data.year ? `${data.year}-01-01` : '';
         
         // Obtener género de Discogs
         const generos = data.genres || [];
@@ -796,7 +798,7 @@ async function buscarEnDiscogs(url) {
         const disco = {
             artista: artistaNombre,
             album: albumNombre,
-            fecha: (datosWiki.fecha && !datosWiki.fecha.endsWith('-01-01')) ? datosWiki.fecha : (fechaRelease || datosWiki.fecha || ''),
+            fecha: datosWiki.fecha || fechaRelease,
             anioEdicion: fechaFabricacion || data.year?.toString() || '',
             formato: 'vinilo',
             formatoDetalle: '',
