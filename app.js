@@ -2040,7 +2040,7 @@ async function syncFromGist() {
             ultimaSync: new Date().toISOString()
         });
 
-        if (payload.length > 900000) {
+        if (payload.length > 1040000) {
             throw new Error('Datos muy grandes (' + Math.round(payload.length / 1024) + 'KB). Eliminá tapas de algunos discos para reducir el tamaño.');
         }
 
