@@ -746,7 +746,7 @@ async function buscarEnDiscogs(url) {
         
         const artistaNombre = data.artists?.map(a => a.name).join(', ') || '';
         const albumNombre = data.title || '';
-        const fechaRelease = data.year ? `${data.year}-01-01` : '';
+        const fechaRelease = data.date_released || (data.year ? `${data.year}-01-01` : '');
         
         // Obtener género de Discogs
         const generos = data.genres || [];
@@ -796,7 +796,7 @@ async function buscarEnDiscogs(url) {
         const disco = {
             artista: artistaNombre,
             album: albumNombre,
-            fecha: datosWiki.fecha || fechaRelease,
+            fecha: (datosWiki.fecha && !datosWiki.fecha.endsWith('-01-01')) ? datosWiki.fecha : (fechaRelease || datosWiki.fecha || ''),
             anioEdicion: fechaFabricacion || data.year?.toString() || '',
             formato: 'vinilo',
             formatoDetalle: '',
