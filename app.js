@@ -309,17 +309,21 @@ function getAnniversaryYear(fechaLanzamiento) {
 // GUARDAR Y CARGAR
 // ============================================
 
-async function guardarDiscos() {
+function guardarDiscos() {
     for (const d of discos) {
         if (d.tapa && d.tapa.startsWith('data:')) {
-            await dbSetTapa(d.id, d.tapa);
+            dbSetTapa(d.id, d.tapa).catch(() => {});
         }
     }
     const sinTapas = discos.map(d => {
         const { tapa, ...rest } = d;
         return rest;
     });
-    localStorage.setItem(APP_KEY, JSON.stringify(sinTapas));
+    try {
+        localStorage.setItem(APP_KEY, JSON.stringify(sinTapas));
+    } catch (e) {
+        console.error('localStorage lleno:', e);
+    }
 }
 
 function generarId() {
@@ -2153,8 +2157,16 @@ async function syncFromGist() {
         }
 
         // Paso 2: Mezclar local + gist (no pierde nada)
-        const localDiscos = JSON.parse(localStorage.getItem(APP_KEY) || '[]');
-        const merged = mergeDiscos(localDiscos, gistDiscos);
+        // Usar `discos` en memoria (tiene tapas) como fuente local,
+        // no localStorage (que guarda sin tapas por IndexedDB).
+        const merged = mergeDiscos(discos, gistDiscos);
+        // Recuperar tapas de IndexedDB para discos venidos del Gist
+        for (const d of merged) {
+            if (!d.tapa) {
+                const saved = await dbGetTapa(d.id);
+                if (saved) d.tapa = saved;
+            }
+        }
 
         // Paso 3: Subir el resultado mezclado al Gist (sin tapas base64)
         const discosParaGist = merged.map(d => {
@@ -2181,9 +2193,9 @@ async function syncFromGist() {
 
         if (!putResp.ok) throw new Error(`Error subiendo: ${putResp.status}`);
 
-        // Paso 4: Guardar localmente
-        localStorage.setItem(APP_KEY, JSON.stringify(merged));
+        // Paso 4: Guardar localmente (tapas a IndexedDB, datos sin tapa a localStorage)
         discos = merged;
+        guardarDiscos();
         renderAll();
 
         // Paso 5: Re-descargar tapas faltantes de Discogs en background
