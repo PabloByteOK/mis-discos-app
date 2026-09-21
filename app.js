@@ -6,6 +6,68 @@ const APP_KEY = 'mis_discos_app';
 const APP_PIN = '1521';
 
 // ============================================
+// IndexedDB PARA TAPAS
+// ============================================
+
+const TAPAS_DB = 'MisDiscosTapas';
+const TAPAS_STORE = 'tapas';
+let tapasDB = null;
+
+function openTapasDB() {
+    return new Promise((resolve, reject) => {
+        if (tapasDB) { resolve(tapasDB); return; }
+        const req = indexedDB.open(TAPAS_DB, 1);
+        req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(TAPAS_STORE)) {
+                db.createObjectStore(TAPAS_STORE);
+            }
+        };
+        req.onsuccess = (e) => { tapasDB = e.target.result; resolve(tapasDB); };
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function dbGetTapa(id) {
+    const db = await openTapasDB();
+    return new Promise((resolve) => {
+        const tx = db.transaction(TAPAS_STORE, 'readonly');
+        const req = tx.objectStore(TAPAS_STORE).get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+    });
+}
+
+async function dbSetTapa(id, dataUrl) {
+    const db = await openTapasDB();
+    return new Promise((resolve) => {
+        const tx = db.transaction(TAPAS_STORE, 'readwrite');
+        tx.objectStore(TAPAS_STORE).put(dataUrl, id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+    });
+}
+
+async function dbDeleteTapa(id) {
+    const db = await openTapasDB();
+    return new Promise((resolve) => {
+        const tx = db.transaction(TAPAS_STORE, 'readwrite');
+        tx.objectStore(TAPAS_STORE).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+    });
+}
+
+async function loadTapasFromDB() {
+    for (const d of discos) {
+        if (!d.tapa) {
+            const saved = await dbGetTapa(d.id);
+            if (saved) d.tapa = saved;
+        }
+    }
+}
+
+// ============================================
 // LOGIN
 // ============================================
 
@@ -247,8 +309,17 @@ function getAnniversaryYear(fechaLanzamiento) {
 // GUARDAR Y CARGAR
 // ============================================
 
-function guardarDiscos() {
-    localStorage.setItem(APP_KEY, JSON.stringify(discos));
+async function guardarDiscos() {
+    for (const d of discos) {
+        if (d.tapa && d.tapa.startsWith('data:')) {
+            await dbSetTapa(d.id, d.tapa);
+        }
+    }
+    const sinTapas = discos.map(d => {
+        const { tapa, ...rest } = d;
+        return rest;
+    });
+    localStorage.setItem(APP_KEY, JSON.stringify(sinTapas));
 }
 
 function generarId() {
@@ -912,6 +983,16 @@ function renderColeccion(filtro) {
     if (filtro) currentFilter = filtro;
     let discosFiltrados = [...discos];
 
+    const vinilos = discos.filter(d => d.formato === 'vinilo').length;
+    const cds = discos.filter(d => d.formato === 'cd').length;
+    const countEl = document.getElementById('disc-count');
+    if (countEl) {
+        const parts = [];
+        if (vinilos) parts.push(`${vinilos} vinilo${vinilos !== 1 ? 's' : ''}`);
+        if (cds) parts.push(`${cds} CD${cds !== 1 ? 's' : ''}`);
+        countEl.textContent = parts.join(' · ');
+    }
+
     if (currentFilter !== 'todos') {
         discosFiltrados = discosFiltrados.filter(d => d.formato === currentFilter);
     }
@@ -1008,6 +1089,7 @@ function agregarDisco(disco) {
 
 function eliminarDisco(id) {
     if (!confirm('¿Eliminar este disco de tu colección?')) return;
+    dbDeleteTapa(id);
     discos = discos.filter(d => d.id !== id);
     guardarDiscos();
     renderAll();
@@ -1203,6 +1285,7 @@ function editarDisco(id) {
     if (editTapaRemove) {
         editTapaRemove.addEventListener('click', () => {
             editTapaUrl = null;
+            dbDeleteTapa(disco.id);
             const container = modal.querySelector('#edit-tapa-container');
             container.innerHTML = '<div class="tapa-placeholder" style="width:100%;height:140px"><span class="tapa-icon">📷</span><p>Sin tapa</p></div>';
         });
@@ -2123,7 +2206,7 @@ async function syncFromGist() {
                         const tapaUrl = await descargarTapa(img.uri);
                         if (tapaUrl) {
                             d.tapa = tapaUrl;
-                            localStorage.setItem(APP_KEY, JSON.stringify(discos));
+                            await dbSetTapa(d.id, tapaUrl);
                         }
                     }
                 } catch (e) { /* skip */ }
@@ -2229,12 +2312,13 @@ document.querySelectorAll('.modal-close').forEach(btn => {
 // INICIALIZACIÓN
 // ============================================
 
-function init() {
+async function init() {
     initAudio();
     initNavigation();
     fetchCotizacionBlue();
 
-    // Ocultar todas las pantallas excepto la activa
+    await loadTapasFromDB();
+
     document.querySelectorAll('.screen').forEach(s => {
         if (!s.classList.contains('active')) {
             s.style.display = 'none';
