@@ -1232,7 +1232,10 @@ function editarDisco(id) {
                     </div>
                     <div class="form-group">
                         <label>Link Discogs</label>
-                        <input type="text" id="edit-discogs-url" value="${disco.discogsUrl || ''}">
+                        <div class="fecha-input-row">
+                            <input type="text" id="edit-discogs-url" value="${disco.discogsUrl || ''}">
+                            ${!disco.discogsUrl ? '<button type="button" class="btn-secondary" id="edit-buscar-edicion" title="Buscar esta edición en Discogs">🔍</button>' : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="form-section-label">Precio</div>
@@ -1292,6 +1295,18 @@ function editarDisco(id) {
             dbDeleteTapa(disco.id);
             const container = modal.querySelector('#edit-tapa-container');
             container.innerHTML = '<div class="tapa-placeholder" style="width:100%;height:140px"><span class="tapa-icon">📷</span><p>Sin tapa</p></div>';
+        });
+    }
+
+    const editBuscarEdicion = modal.querySelector('#edit-buscar-edicion');
+    if (editBuscarEdicion) {
+        editBuscarEdicion.addEventListener('click', () => {
+            document.getElementById('discogs-search-artist').value = disco.artista || '';
+            document.getElementById('discogs-search-album').value = disco.album || '';
+            modal.remove();
+            navegarA('screen-agregar');
+            document.getElementById('discogs-search-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('discogs-search-value').focus();
         });
     }
 
@@ -1696,6 +1711,116 @@ elements.btnFetchDiscogs.addEventListener('click', async () => {
         elements.btnFetchDiscogs.textContent = 'Buscar en Discogs';
     }
 });
+
+// ============================================
+// BÚSQUEDA DE EDICIÓN EN DISCOGS
+// (por barcode / matriz-runout / catálogo + país)
+// ============================================
+
+let discogsSearchMethod = 'barcode';
+
+document.querySelectorAll('.search-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.search-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        discogsSearchMethod = btn.dataset.method;
+        const placeholders = {
+            barcode: 'Código de barras (ej: 886976239510)',
+            matrix: 'Matriz/runout (ej: T8-374-M1A)',
+            catno: 'N° de catálogo (ej: NBLP 7122)'
+        };
+        document.getElementById('discogs-search-value').placeholder = placeholders[discogsSearchMethod] || 'Valor a buscar';
+    });
+});
+
+function saveDiscogsToken(token) {
+    if (token) localStorage.setItem('discogs_token', token);
+}
+
+document.getElementById('btn-discogs-search')?.addEventListener('click', async () => {
+    const value = document.getElementById('discogs-search-value').value.trim();
+    const country = document.getElementById('discogs-search-country').value;
+    const artist = document.getElementById('discogs-search-artist').value.trim();
+    const album = document.getElementById('discogs-search-album').value.trim();
+    const year = document.getElementById('discogs-search-year').value.trim();
+    const qty = document.getElementById('discogs-search-qty').value;
+    const tokenInput = document.getElementById('discogs-token');
+    const token = (tokenInput.value.trim() || localStorage.getItem('discogs_token') || '').trim();
+    const loading = document.getElementById('discogs-search-loading');
+    const resultsBox = document.getElementById('discogs-search-results');
+
+    if (!value) { alert('Ingresá el valor a buscar'); return; }
+    if (!token) { alert('Pegá tu token de Discogs (se guarda en este navegador)'); tokenInput.focus(); return; }
+    saveDiscogsToken(token);
+    tokenInput.value = '';
+
+    const params = new URLSearchParams({ type: 'release', per_page: '20', token });
+    if (discogsSearchMethod === 'barcode') params.set('barcode', value);
+    else if (discogsSearchMethod === 'catno') params.set('catno', value);
+    else params.set('q', value);
+    if (country) params.set('country', country);
+    if (artist) params.set('artist', artist);
+    if (album) params.set('release_title', album);
+    if (year) params.set('year', year);
+
+    loading.classList.remove('hidden');
+    resultsBox.innerHTML = '';
+
+    try {
+        const resp = await fetch(`https://api.discogs.com/database/search?${params.toString()}`, {
+            headers: { 'User-Agent': 'MisDiscosApp/1.0' }
+        });
+        if (resp.status === 401) throw new Error('Token inválido (401)');
+        if (!resp.ok) throw new Error(`Error ${resp.status}`);
+        const data = await resp.json();
+        let results = data.results || [];
+        if (qty) {
+            results = results.filter(r =>
+                String(r.format_quantity) === qty ||
+                (r.formats || []).some(f => String(f.qty) === qty)
+            );
+        }
+        if (results.length === 0) {
+            resultsBox.innerHTML = '<p class="empty-message">Sin resultados. Probá con otro valor o sin filtro de país.</p>';
+            return;
+        }
+        resultsBox.innerHTML = results.map(r => {
+            const releaseUrl = `https://www.discogs.com${r.uri}`;
+            const labels = (r.label || []).slice(0, 2).join(' / ');
+            const qtyPrefix = r.format_quantity > 1 ? `${r.format_quantity} x ` : '';
+            const formats = qtyPrefix + (r.format || []).slice(0, 3).join(', ');
+            return `
+                <div class="discogs-result">
+                    ${r.thumb ? `<img src="${r.thumb}" alt="Tapa" loading="lazy">` : ''}
+                    <div class="discogs-result-info">
+                        <strong>${r.title || ''}</strong>
+                        <span>${r.country || ''}${r.year ? ` · ${r.year}` : ''}${labels ? ` · ${labels}` : ''}</span><br>
+                        <span>${r.catno ? `Cat: ${r.catno}` : ''}${formats ? ` · ${formats}` : ''}</span>
+                    </div>
+                    <button class="btn-secondary" onclick="usarDiscogsUrl('${releaseUrl}')">Copiar link</button>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Error búsqueda Discogs:', e);
+        resultsBox.innerHTML = `<p class="empty-message">Error: ${e.message}</p>`;
+    } finally {
+        loading.classList.add('hidden');
+    }
+});
+
+function usarDiscogsUrl(url) {
+    elements.discogsUrl.value = url;
+    if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
+    elements.discogsUrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    elements.discogsUrl.focus();
+}
+
+// Precargar token guardado al iniciar (se muestra vacío por seguridad,
+// pero se usa el guardado si el campo está vacío)
+document.getElementById('discogs-token').placeholder = localStorage.getItem('discogs_token')
+    ? 'Token guardado ✓ (pegá otro para cambiarlo)'
+    : 'Token de Discogs (se guarda en este navegador)';
 
 // Formulario
 elements.form.addEventListener('submit', (e) => {

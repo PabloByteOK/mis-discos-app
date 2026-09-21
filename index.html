@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.2</title>
+    <title>Mis Discos v0.9.6</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
@@ -100,6 +100,65 @@
                         <input type="text" id="discogs-url" placeholder="https://www.discogs.com/release/...">
                         <button id="btn-fetch-discogs" class="btn-secondary">Buscar</button>
                     </div>
+                </div>
+
+                <div class="discogs-box" id="discogs-search-box">
+                    <h3>O buscá tu edición en Discogs</h3>
+                    <p class="search-hint">Por código de barras, matriz/runout o n° de catálogo + país</p>
+                    <div class="search-tabs">
+                        <button class="search-tab active" data-method="barcode">Barcode</button>
+                        <button class="search-tab" data-method="matrix">Matriz</button>
+                        <button class="search-tab" data-method="catno">Catálogo</button>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" id="discogs-search-value" placeholder="Valor a buscar">
+                        </div>
+                        <div class="form-group search-country">
+                            <select id="discogs-search-country">
+                                <option value="">Todos los países</option>
+                                <option value="Europe">Europe</option>
+                                <option value="Argentina" selected>Argentina</option>
+                                <option value="Brazil">Brazil</option>
+                                <option value="US">US</option>
+                                <option value="UK">UK</option>
+                                <option value="Japan">Japan</option>
+                                <option value="Netherlands">Netherlands</option>
+                                <option value="Czech Republic">Czech Republic</option>
+                                <option value="Germany">Germany</option>
+                                <option value="France">France</option>
+                                <option value="Spain">Spain</option>
+                                <option value="Italy">Italy</option>
+                                <option value="Mexico">Mexico</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" id="discogs-search-artist" placeholder="Banda (opcional)">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="discogs-search-album" placeholder="Disco (opcional)">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="number" id="discogs-search-year" placeholder="Año (opcional)" min="1900" max="2099">
+                        </div>
+                        <div class="form-group search-country">
+                            <select id="discogs-search-qty">
+                                <option value="">Cant: cualquiera</option>
+                                <option value="1">1 LP</option>
+                                <option value="2">2 LP</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="discogs-token" placeholder="Token de Discogs (se guarda en este navegador)">
+                    </div>
+                    <button id="btn-discogs-search" class="btn-secondary">Buscar edición</button>
+                    <div id="discogs-search-loading" class="hidden">Buscando...</div>
+                    <div id="discogs-search-results"></div>
                 </div>
                 
                 <form id="disco-form">
