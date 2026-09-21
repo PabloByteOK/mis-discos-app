@@ -1591,6 +1591,11 @@ details.form-section > summary {
     background: #fff;
 }
 
+.webcam-capture-btn:disabled {
+    opacity: 0.35;
+    cursor: wait;
+}
+
 .webcam-switch-btn {
     display: block;
     margin: 0 auto 12px;

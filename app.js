@@ -217,6 +217,7 @@ function resizeImage(dataUrl, maxSize = 300) {
             canvas.getContext('2d').drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL('image/jpeg', 0.6));
         };
+        img.onerror = () => resolve(dataUrl);
         img.src = dataUrl;
     });
 }
@@ -1094,6 +1095,7 @@ function agregarDisco(disco) {
 function eliminarDisco(id) {
     if (!confirm('¿Eliminar este disco de tu colección?')) return;
     dbDeleteTapa(id);
+    addDeletedId(id);
     discos = discos.filter(d => d.id !== id);
     guardarDiscos();
     renderAll();
@@ -1544,7 +1546,7 @@ function abrirWebcam(onCapture) {
                 <video id="webcam-video" autoplay playsinline></video>
                 <canvas id="webcam-canvas"></canvas>
             </div>
-            <button class="webcam-capture-btn" id="webcam-capture" title="Capturar"></button>
+            <button class="webcam-capture-btn" id="webcam-capture" title="Capturar" disabled></button>
             <button class="webcam-switch-btn" id="webcam-switch">Cambiar cámara</button>
         </div>
     `;
@@ -1552,7 +1554,16 @@ function abrirWebcam(onCapture) {
 
     const video = modal.querySelector('#webcam-video');
     const canvas = modal.querySelector('#webcam-canvas');
+    const captureBtn = modal.querySelector('#webcam-capture');
     let facingMode = 'environment';
+    let videoReady = false;
+
+    video.addEventListener('canplay', () => {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+            videoReady = true;
+            captureBtn.disabled = false;
+        }
+    });
 
     async function startCamera() {
         if (webcamStream) {
@@ -1578,6 +1589,10 @@ function abrirWebcam(onCapture) {
     modal.querySelector('#webcam-capture').addEventListener('click', async () => {
         const vw = video.videoWidth;
         const vh = video.videoHeight;
+        if (!videoReady || !vw || !vh) {
+            alert('La cámara aún está iniciando, esperá un segundo e intentá de nuevo.');
+            return;
+        }
         const size = Math.min(vw, vh);
         const sx = (vw - size) / 2;
         const sy = (vh - size) / 2;
@@ -1585,7 +1600,7 @@ function abrirWebcam(onCapture) {
         canvas.height = size;
         canvas.getContext('2d').drawImage(video, sx, sy, size, size, 0, 0, size, size);
         const dataUrl = await resizeImage(canvas.toDataURL('image/jpeg', 0.8));
-        if (onCapture) {
+        if (typeof onCapture === 'function') {
             onCapture(dataUrl);
         } else {
             tapaDataUrl = dataUrl;
@@ -1598,6 +1613,8 @@ function abrirWebcam(onCapture) {
 
     modal.querySelector('#webcam-switch').addEventListener('click', () => {
         facingMode = facingMode === 'environment' ? 'user' : 'environment';
+        videoReady = false;
+        captureBtn.disabled = true;
         startCamera();
     });
 
@@ -1613,7 +1630,7 @@ function abrirWebcam(onCapture) {
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 }
 
-elements.btnTapaCamera.addEventListener('click', abrirWebcam);
+elements.btnTapaCamera.addEventListener('click', () => abrirWebcam(null));
 
 // Búsqueda en Wikipedia
 elements.btnSearchWiki.addEventListener('click', async () => {
@@ -2244,8 +2261,26 @@ function updateSyncLast() {
     }
 }
 
-function mergeDiscos(local, gist) {
-    const merged = [...local];
+// IDs eliminados (para que el sync no reviva discos borrados)
+const DELETED_KEY = 'mis_discos_eliminados';
+
+function getDeletedIds() {
+    try {
+        return JSON.parse(localStorage.getItem(DELETED_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function addDeletedId(id) {
+    const arr = getDeletedIds();
+    if (id && !arr.includes(id)) {
+        arr.push(id);
+        localStorage.setItem(DELETED_KEY, JSON.stringify(arr.slice(-500)));
+    }
+}
+
+function mergeDiscos(local, gist) {    const merged = [...local];
     const byKey = new Map(local.map(d => [`${d.artista}|${d.album}`.toLowerCase(), d]));
     for (const d of gist) {
         const key = `${d.artista}|${d.album}`.toLowerCase();
@@ -2285,13 +2320,20 @@ async function syncFromGist() {
         const fileName = Object.keys(gist.files)[0];
         const content = gist.files[fileName].content;
         let gistDiscos = [];
+        let gistEliminados = [];
         try {
             const data = JSON.parse(content);
             gistDiscos = (data.discos && Array.isArray(data.discos)) ? data.discos : [];
+            gistEliminados = (data.eliminados && Array.isArray(data.eliminados)) ? data.eliminados : [];
         } catch (parseErr) {
             console.warn('Gist JSON corrupto, se subiran los datos locales encima');
             gistDiscos = [];
         }
+
+        // Unir listas de eliminados (local + gist) y filtrar
+        const eliminados = [...new Set([...getDeletedIds(), ...gistEliminados])];
+        localStorage.setItem(DELETED_KEY, JSON.stringify(eliminados.slice(-500)));
+        gistDiscos = gistDiscos.filter(d => !eliminados.includes(d.id));
 
         // Paso 2: Mezclar local + gist (no pierde nada)
         // Usar `discos` en memoria (tiene tapas) como fuente local,
@@ -2312,6 +2354,7 @@ async function syncFromGist() {
         });
         const payload = JSON.stringify({
             discos: discosParaGist,
+            eliminados: eliminados,
             ultimaSync: new Date().toISOString()
         });
 
@@ -2395,6 +2438,7 @@ async function syncToGist() {
         });
         const payload = JSON.stringify({
             discos: discosLimpios,
+            eliminados: getDeletedIds(),
             ultimaSync: new Date().toISOString()
         });
 
