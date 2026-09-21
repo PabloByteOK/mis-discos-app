@@ -1305,6 +1305,7 @@ function editarDisco(id) {
             document.getElementById('discogs-search-album').value = disco.album || '';
             modal.remove();
             navegarA('screen-agregar');
+            document.getElementById('discogs-search-box').open = true;
             document.getElementById('discogs-search-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
             document.getElementById('discogs-search-value').focus();
         });
@@ -1812,6 +1813,7 @@ document.getElementById('btn-discogs-search')?.addEventListener('click', async (
 function usarDiscogsUrl(url) {
     elements.discogsUrl.value = url;
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
+    document.getElementById('discogs-link-box').open = true;
     elements.discogsUrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     elements.discogsUrl.focus();
 }
@@ -1823,6 +1825,10 @@ document.getElementById('discogs-token').placeholder = localStorage.getItem('dis
     : 'Token de Discogs (se guarda en este navegador)';
 
 // Formulario
+elements.form.addEventListener('invalid', () => {
+    document.getElementById('datos-details').open = true;
+}, true);
+
 elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
     

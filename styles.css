@@ -339,10 +339,33 @@ section h3 {
     border: 1px solid var(--border);
 }
 
-.search-box h3,
-.discogs-box h3 {
+.search-box summary,
+.discogs-box summary {
     color: #fff;
     font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-box summary::-webkit-details-marker,
+.discogs-box summary::-webkit-details-marker {
+    display: none;
+}
+
+.search-box summary::before,
+.discogs-box summary::before {
+    content: '▸';
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    transition: transform 0.2s;
+}
+
+.search-box[open] summary::before,
+.discogs-box[open] summary::before {
+    transform: rotate(90deg);
 }
 
 .search-hint {

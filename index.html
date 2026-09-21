@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.6</title>
+    <title>Mis Discos v0.9.8</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
@@ -79,8 +79,8 @@
         <!-- PANTALLA 1: Agregar Disco -->
         <div class="screen active" id="screen-agregar">
             <section class="add-disco">
-                <div class="search-box">
-                    <h3>Buscar por nombre</h3>
+                <details class="search-box" open>
+                    <summary>Buscar por nombre</summary>
                     <p class="search-hint">Banda y disco para buscar la fecha automáticamente</p>
                     <div class="form-row">
                         <div class="form-group">
@@ -92,18 +92,18 @@
                     </div>
                     <button id="btn-search-wiki" class="btn-primary">Buscar fecha</button>
                     <div id="search-loading" class="hidden">Buscando...</div>
-                </div>
+                </details>
 
-                <div class="discogs-box">
-                    <h3>O pegá un link de Discogs (opcional)</h3>
+                <details class="discogs-box" id="discogs-link-box">
+                    <summary>O pegá un link de Discogs (opcional)</summary>
                     <div class="form-group">
                         <input type="text" id="discogs-url" placeholder="https://www.discogs.com/release/...">
                         <button id="btn-fetch-discogs" class="btn-secondary">Buscar</button>
                     </div>
-                </div>
+                </details>
 
-                <div class="discogs-box" id="discogs-search-box">
-                    <h3>O buscá tu edición en Discogs</h3>
+                <details class="discogs-box" id="discogs-search-box">
+                    <summary>O buscá tu edición en Discogs</summary>
                     <p class="search-hint">Por código de barras, matriz/runout o n° de catálogo + país</p>
                     <div class="search-tabs">
                         <button class="search-tab active" data-method="barcode">Barcode</button>
@@ -159,10 +159,10 @@
                     <button id="btn-discogs-search" class="btn-secondary">Buscar edición</button>
                     <div id="discogs-search-loading" class="hidden">Buscando...</div>
                     <div id="discogs-search-results"></div>
-                </div>
+                </details>
                 
                 <form id="disco-form">
-                    <details open class="form-section">
+                    <details class="form-section" id="datos-details">
                         <summary class="form-section-label">Completá los datos</summary>
                         <div id="fecha-aviso" class="hidden">
                             <p class="fecha-aviso-text"></p>
@@ -282,7 +282,7 @@
                             </div>
                         </div>
                     </details>
-                    <details open class="form-section">
+                    <details class="form-section">
                         <summary class="form-section-label">Precio</summary>
                         <div class="form-row-3">
                             <div class="form-group">
@@ -322,10 +322,12 @@
                             </div>
                         </div>
                     </details>
-                    <div class="form-group">
-                        <label for="resena">Reseña personal (opcional)</label>
-                        <textarea id="resena" placeholder="Tu opinión sobre el disco..."></textarea>
-                    </div>
+                    <details class="form-section">
+                        <summary class="form-section-label">Reseña personal (opcional)</summary>
+                        <div class="form-group">
+                            <textarea id="resena" placeholder="Tu opinión sobre el disco..."></textarea>
+                        </div>
+                    </details>
                     <button type="submit" class="btn-primary">Agregar a mi colección</button>
                 </form>
             </section>
