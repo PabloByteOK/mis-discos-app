@@ -1596,6 +1596,23 @@ details.form-section > summary {
     cursor: wait;
 }
 
+.scan-frame {
+    position: relative;
+}
+
+.scan-frame::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80%;
+    height: 34%;
+    transform: translate(-50%, -50%);
+    border: 2px solid var(--accent-light);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
 .webcam-switch-btn {
     display: block;
     margin: 0 auto 12px;

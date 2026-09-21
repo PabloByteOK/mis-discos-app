@@ -1835,6 +1835,95 @@ function usarDiscogsUrl(url) {
     elements.discogsUrl.focus();
 }
 
+// ============================================
+// ESCÁNER DE CÓDIGO DE BARRAS (cámara)
+// ============================================
+
+document.getElementById('btn-barcode-scan')?.addEventListener('click', async () => {
+    if (!('BarcodeDetector' in window)) {
+        alert('Este navegador no soporta escaneo. Ingresá el código manualmente.');
+        return;
+    }
+    const token = (document.getElementById('discogs-token').value.trim()
+        || localStorage.getItem('discogs_token') || '').trim();
+    if (!token) {
+        alert('Pegá tu token de Discogs primero (se guarda en este navegador)');
+        document.getElementById('discogs-token').focus();
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="webcam-modal">
+            <div class="modal-header">
+                <h3>Escanear código</h3>
+                <button class="modal-close" id="scan-close">&times;</button>
+            </div>
+            <div class="webcam-video-container scan-frame">
+                <video id="scan-video" autoplay playsinline muted></video>
+            </div>
+            <p class="search-hint" style="text-align:center">Apuntá al código de barras</p>
+            <button class="webcam-switch-btn" id="scan-cancel">Cancelar</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const video = modal.querySelector('#scan-video');
+    let stream = null;
+    let scanning = true;
+
+    function closeScanner() {
+        scanning = false;
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+        modal.remove();
+    }
+    modal.querySelector('#scan-close').addEventListener('click', closeScanner);
+    modal.querySelector('#scan-cancel').addEventListener('click', closeScanner);
+
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false
+        });
+        video.srcObject = stream;
+        await video.play().catch(() => {});
+    } catch (err) {
+        console.error('Error cámara scanner:', err);
+        modal.querySelector('.webcam-video-container').innerHTML =
+            '<div class="webcam-error">No se pudo acceder a la cámara.</div>';
+        return;
+    }
+
+    const detector = new BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'itf']
+    });
+
+    async function scanLoop() {
+        if (!scanning) return;
+        try {
+            if (video.readyState >= 2 && video.videoWidth > 0) {
+                const codes = await detector.detect(video);
+                if (codes && codes.length > 0 && codes[0].rawValue) {
+                    const code = codes[0].rawValue.replace(/\s/g, '');
+                    closeScanner();
+                    document.querySelectorAll('.search-tab').forEach(b =>
+                        b.classList.toggle('active', b.dataset.method === 'barcode'));
+                    discogsSearchMethod = 'barcode';
+                    document.getElementById('discogs-search-value').value = code;
+                    document.getElementById('btn-discogs-search').click();
+                    return;
+                }
+            }
+        } catch (e) { /* seguir intentando */ }
+        setTimeout(scanLoop, 400);
+    }
+    scanLoop();
+});
+
 // Precargar token guardado al iniciar (se muestra vacío por seguridad,
 // pero se usa el guardado si el campo está vacío)
 document.getElementById('discogs-token').placeholder = localStorage.getItem('discogs_token')
