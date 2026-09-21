@@ -2115,11 +2115,17 @@ function updateSyncLast() {
 
 function mergeDiscos(local, gist) {
     const merged = [...local];
-    const localKeys = new Set(local.map(d => `${d.artista}|${d.album}`.toLowerCase()));
+    const byKey = new Map(local.map(d => [`${d.artista}|${d.album}`.toLowerCase(), d]));
     for (const d of gist) {
         const key = `${d.artista}|${d.album}`.toLowerCase();
-        if (!localKeys.has(key)) {
+        const existing = byKey.get(key);
+        if (!existing) {
             merged.push(d);
+        } else {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'notas', 'tapa']) {
+                if (!existing[f] && d[f]) existing[f] = d[f];
+            }
+            if (!existing.formato && d.formato) existing.formato = d.formato;
         }
     }
     return merged;
