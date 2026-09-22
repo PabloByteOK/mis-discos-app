@@ -223,26 +223,23 @@ function resizeImage(dataUrl, maxSize = 300) {
 }
 
 async function descargarTapa(url) {
-    // Proxy primero (evita CORS), directo como fallback
-    const urls = [
-        `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&output=jpg&q=70`,
-        url
-    ];
-    
-    for (const tryUrl of urls) {
-        try {
-            const response = await fetch(tryUrl);
-            if (!response.ok) continue;
+    // Intentar convertir a base64 vía proxy; si falla, devolver la URL directa
+    const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&output=jpg&q=70`;
+    try {
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
             const blob = await response.blob();
-            if (!blob.type.startsWith('image/')) continue;
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.readAsDataURL(blob);
-            });
-        } catch (e) { /* try next */ }
-    }
-    console.warn('Descarga de tapa falló para:', url);
+            if (blob.type.startsWith('image/')) {
+                return await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(blob);
+                });
+            }
+        }
+    } catch (e) { /* proxy no disponible */ }
+    // Fallback: devolver la URL directa (el <img> la puede mostrar)
+    if (url.startsWith('http')) return url;
     return null;
 }
 
