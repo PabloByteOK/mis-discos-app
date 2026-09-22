@@ -890,6 +890,8 @@ async function buscarEnDiscogs(url) {
             runout: '',
             catalogo: data.labels?.[0]?.catno || '',
             barcode: '',
+            sidMastering: '',
+            sidMould: '',
             notas: discogsNotes || '',
             discogsUrl: url,
             discogsId: info.id,
@@ -906,6 +908,10 @@ async function buscarEnDiscogs(url) {
                     if (id.value && !disco.barcode) disco.barcode = id.value;
                 } else if (type.includes('catalog')) {
                     if (id.value && !disco.catalogo) disco.catalogo = id.value;
+                } else if (type.includes('mastering sid')) {
+                    if (id.value && !disco.sidMastering) disco.sidMastering = id.value;
+                } else if (type.includes('mould sid')) {
+                    if (id.value && !disco.sidMould) disco.sidMould = id.value;
                 }
             }
         }
@@ -1247,6 +1253,16 @@ function editarDisco(id) {
                         </div>
                     </div>
                 </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SID mastering (CD)</label>
+                        <input type="text" id="edit-sid-mastering" value="${disco.sidMastering || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>SID molde (CD)</label>
+                        <input type="text" id="edit-sid-mould" value="${disco.sidMould || ''}">
+                    </div>
+                </div>
                 <div class="form-section-label">Precio</div>
                 <div class="form-row-3">
                     <div class="form-group">
@@ -1393,6 +1409,8 @@ function editarDisco(id) {
         disco.runout = modal.querySelector('#edit-runout').value.trim();
         disco.catalogo = modal.querySelector('#edit-catalogo').value.trim();
         disco.barcode = modal.querySelector('#edit-barcode').value.trim();
+        disco.sidMastering = modal.querySelector('#edit-sid-mastering').value.trim();
+        disco.sidMould = modal.querySelector('#edit-sid-mould').value.trim();
         disco.discogsUrl = modal.querySelector('#edit-discogs-url').value.trim();
         disco.precioUsd = modal.querySelector('#edit-precio-usd').value || '';
         disco.cotizacionBlue = disco.cotizacionBlue || cotizacionBlue || '';
@@ -1440,6 +1458,8 @@ function limpiarFormulario() {
     document.getElementById('runout').value = '';
     document.getElementById('catalogo').value = '';
     document.getElementById('barcode').value = '';
+    document.getElementById('sid-mastering').value = '';
+    document.getElementById('sid-mould').value = '';
     document.getElementById('discogs-url-edit').value = '';
     document.getElementById('precio-usd').value = '';
     document.getElementById('precio-ars-display').textContent = '—';
@@ -1725,6 +1745,8 @@ elements.btnFetchDiscogs.addEventListener('click', async () => {
             if (disco.runout) document.getElementById('runout').value = disco.runout;
             if (disco.catalogo) document.getElementById('catalogo').value = disco.catalogo;
             if (disco.barcode) document.getElementById('barcode').value = disco.barcode;
+            if (disco.sidMastering) document.getElementById('sid-mastering').value = disco.sidMastering;
+            if (disco.sidMould) document.getElementById('sid-mould').value = disco.sidMould;
             document.getElementById('discogs-url-edit').value = url;
             if (disco.notas) elements.notas.value = disco.notas.substring(0, 500);
             
@@ -1771,6 +1793,10 @@ function saveDiscogsToken(token) {
     if (token) localStorage.setItem('discogs_token', token);
 }
 
+document.getElementById('discogs-search-format')?.addEventListener('change', (e) => {
+    document.getElementById('sid-row').classList.toggle('hidden', e.target.value !== 'CD');
+});
+
 document.getElementById('btn-discogs-search')?.addEventListener('click', async () => {
     const value = document.getElementById('discogs-search-value').value.trim();
     const country = document.getElementById('discogs-search-country').value;
@@ -1778,6 +1804,9 @@ document.getElementById('btn-discogs-search')?.addEventListener('click', async (
     const album = document.getElementById('discogs-search-album').value.trim();
     const year = document.getElementById('discogs-search-year').value.trim();
     const qty = document.getElementById('discogs-search-qty').value;
+    const searchFormat = document.getElementById('discogs-search-format').value;
+    const sidMastering = document.getElementById('discogs-search-sid-mastering').value.trim();
+    const sidMould = document.getElementById('discogs-search-sid-mould').value.trim();
     const tokenInput = document.getElementById('discogs-token');
     const token = (tokenInput.value.trim() || localStorage.getItem('discogs_token') || '').trim();
     const loading = document.getElementById('discogs-search-loading');
@@ -1791,23 +1820,36 @@ document.getElementById('btn-discogs-search')?.addEventListener('click', async (
     const params = new URLSearchParams({ type: 'release', per_page: '20', token });
     if (discogsSearchMethod === 'barcode') params.set('barcode', value);
     else if (discogsSearchMethod === 'catno') params.set('catno', value);
-    else params.set('q', value);
+    else params.set('q', [value, sidMastering, sidMould].filter(Boolean).join(' '));
     if (country) params.set('country', country);
     if (artist) params.set('artist', artist);
     if (album) params.set('release_title', album);
     if (year) params.set('year', year);
+    if (searchFormat) params.set('format', searchFormat);
 
     loading.classList.remove('hidden');
     resultsBox.innerHTML = '';
 
     try {
-        const resp = await fetch(`https://api.discogs.com/database/search?${params.toString()}`, {
-            headers: { 'User-Agent': 'MisDiscosApp/1.0' }
-        });
-        if (resp.status === 401) throw new Error('Token inválido (401)');
-        if (!resp.ok) throw new Error(`Error ${resp.status}`);
-        const data = await resp.json();
+        async function fetchSearch(p) {
+            const resp = await fetch(`https://api.discogs.com/database/search?${p.toString()}`, {
+                headers: { 'User-Agent': 'MisDiscosApp/1.0' }
+            });
+            if (resp.status === 401) throw new Error('Token inválido (401)');
+            if (resp.status === 429) throw new Error('Límite de Discogs (60/min), esperá un minuto');
+            if (!resp.ok) throw new Error(`Error ${resp.status}`);
+            return resp.json();
+        }
+        const sidUsed = discogsSearchMethod === 'matrix' && (sidMastering || sidMould);
+        let data = await fetchSearch(params);
         let results = data.results || [];
+        let sidFallback = false;
+        if (results.length === 0 && sidUsed) {
+            params.set('q', value);
+            data = await fetchSearch(params);
+            results = data.results || [];
+            sidFallback = results.length > 0;
+        }
         if (qty) {
             results = results.filter(r =>
                 String(r.format_quantity) === qty ||
@@ -1818,7 +1860,10 @@ document.getElementById('btn-discogs-search')?.addEventListener('click', async (
             resultsBox.innerHTML = '<p class="empty-message">Sin resultados. Probá con otro valor o sin filtro de país.</p>';
             return;
         }
-        resultsBox.innerHTML = results.map(r => {
+        const fallbackNote = sidFallback
+            ? '<p class="empty-message">Sin coincidencias con SID; mostrando sin SID.</p>'
+            : '';
+        resultsBox.innerHTML = fallbackNote + results.map(r => {
             const releaseUrl = `https://www.discogs.com${r.uri}`;
             const labels = (r.label || []).slice(0, 2).join(' / ');
             const qtyPrefix = r.format_quantity > 1 ? `${r.format_quantity} x ` : '';
@@ -1969,6 +2014,8 @@ elements.form.addEventListener('submit', (e) => {
         runout: document.getElementById('runout').value.trim(),
         catalogo: document.getElementById('catalogo').value.trim(),
         barcode: document.getElementById('barcode').value.trim(),
+        sidMastering: document.getElementById('sid-mastering').value.trim(),
+        sidMould: document.getElementById('sid-mould').value.trim(),
         discogsUrl: document.getElementById('discogs-url-edit').value.trim(),
         precioUsd: document.getElementById('precio-usd').value || '',
         cotizacionBlue: cotizacionBlue || '',
@@ -2393,7 +2440,7 @@ function mergeDiscos(local, gist) {
         if (!existing) {
             merged.push(d);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'notas', 'tapa']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;

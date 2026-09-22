@@ -1,7 +1,7 @@
 {
     "name": "Mis Discos - Aniversarios",
     "short_name": "Mis Discos",
-    "version": "0.9.11",
+    "version": "0.9.12",
     "description": "Gestioná tu colección de discos y no te pierdas ningún aniversario",
     "start_url": "./index.html",
     "display": "standalone",

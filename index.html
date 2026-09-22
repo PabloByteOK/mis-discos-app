@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.11</title>
+    <title>Mis Discos v0.9.12</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
@@ -112,6 +112,15 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
+                            <select id="discogs-search-format">
+                                <option value="">Formato: cualquiera</option>
+                                <option value="Vinyl">Vinilo</option>
+                                <option value="CD">CD</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
                             <input type="text" id="discogs-search-value" placeholder="Valor a buscar">
                         </div>
                         <div class="form-group search-country">
@@ -151,6 +160,14 @@
                                 <option value="1">1 LP</option>
                                 <option value="2">2 LP</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="form-row hidden" id="sid-row">
+                        <div class="form-group">
+                            <input type="text" id="discogs-search-sid-mastering" placeholder="SID mastering (ej: IFPI L046)">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="discogs-search-sid-mould" placeholder="SID molde (ej: 1554)">
                         </div>
                     </div>
                     <div class="form-group">
@@ -320,6 +337,16 @@
                             <div class="form-group">
                                 <label for="discogs-url-edit">Link Discogs</label>
                                 <input type="text" id="discogs-url-edit" placeholder="https://www.discogs.com/release/...">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sid-mastering">SID mastering (CD)</label>
+                                <input type="text" id="sid-mastering" placeholder="Ej: IFPI L046">
+                            </div>
+                            <div class="form-group">
+                                <label for="sid-mould">SID molde (CD)</label>
+                                <input type="text" id="sid-mould" placeholder="Ej: 1554">
                             </div>
                         </div>
                     </details>
