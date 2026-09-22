@@ -276,6 +276,15 @@ function formatDateShort(dateStr) {
     return `${day}/${month}/${year}`;
 }
 
+function fechaCorta(disco) {
+    return (disco.fechaAprox ? '~' : '') + formatDateShort(disco.fecha);
+}
+
+function edicionCorta(disco) {
+    if (!disco.anioEdicion) return '';
+    return `Ed. ${disco.edicionAprox ? '~' : ''}${disco.anioEdicion}`;
+}
+
 function getDiasHastaAniversario(fechaLanzamiento) {
     if (!fechaLanzamiento) return 999;
     
@@ -986,7 +995,7 @@ function renderAniversarios() {
                 <div class="anniversary-details">
                     <span class="artista">${titleCase(disco.artista)}</span> · 
                     ${anniversaryYear}° aniversario · 
-                    ${formatDateShort(disco.fecha)}${disco.fecha && disco.fecha.endsWith('-01-01') ? ' <span class="fecha-badge-alert" title="Fecha no verificada — solo año conocido">⚠</span>' : ''}
+                    ${fechaCorta(disco)}${disco.fecha && disco.fecha.endsWith('-01-01') ? ' <span class="fecha-badge-alert" title="Fecha no verificada — solo año conocido">⚠</span>' : ''}
                     ${disco.sello ? ` · ${disco.sello}` : ''}
                     ${disco.formatoDetalle ? ` · ${disco.formatoDetalle}` : ''}
                 </div>
@@ -1048,11 +1057,11 @@ function renderColeccion(filtro) {
     
     elements.listaColeccion.innerHTML = discosFiltrados.map(disco => {
         const anniversaryYear = getAnniversaryYear(disco.fecha);
-        const fechaStr = formatDateShort(disco.fecha);
+        const fechaStr = fechaCorta(disco);
         const fechaUnreliable = disco.fecha && disco.fecha.endsWith('-01-01');
         const parts = [];
         if (fechaStr) parts.push(fechaStr + (fechaUnreliable ? ' <span class="fecha-badge-alert" title="Fecha no verificada — solo año conocido">⚠</span>' : ''));
-        if (disco.anioEdicion) parts.push(`Ed. ${disco.anioEdicion}`);
+        if (disco.anioEdicion) parts.push(edicionCorta(disco));
         if (disco.sello) parts.push(disco.sello);
         if (disco.genero) parts.push(disco.genero);
         if (disco.formatoDetalle) parts.push(disco.formatoDetalle);
@@ -1158,6 +1167,11 @@ function editarDisco(id) {
                     <div class="form-group">
                         <label>Año de edición</label>
                         <input type="number" id="edit-anio-edicion" value="${disco.anioEdicion || ''}" placeholder="Ej: 1982" min="1900" max="2099">
+                    </div>
+                    <div class="form-group">
+                        <label>Fechas aprox.</label>
+                        <label class="check-row"><input type="checkbox" id="edit-fecha-aprox" ${disco.fechaAprox ? 'checked' : ''}> Lanz.</label>
+                        <label class="check-row"><input type="checkbox" id="edit-edicion-aprox" ${disco.edicionAprox ? 'checked' : ''}> Edic.</label>
                     </div>
                     <div class="form-group">
                         <label>Formato</label>
@@ -1296,6 +1310,13 @@ function editarDisco(id) {
     modal.querySelector('#modal-cancel').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 
+    const modalSaveBtn = modal.querySelector('#modal-save');
+    const modalRequired = ['#edit-artista', '#edit-album', '#edit-fecha'].map(s => modal.querySelector(s));
+    const updateModalGlow = () => modalSaveBtn.classList.toggle('btn-glow',
+        modalRequired.every(el => el && el.value.trim()));
+    modalRequired.forEach(el => el && el.addEventListener('input', updateModalGlow));
+    updateModalGlow();
+
     let editTapaUrl = disco.tapa || null;
 
     const editTapaFile = modal.querySelector('#edit-tapa-file');
@@ -1399,6 +1420,8 @@ function editarDisco(id) {
         disco.album = modal.querySelector('#edit-album').value.trim();
         disco.fecha = modal.querySelector('#edit-fecha').value;
         disco.anioEdicion = modal.querySelector('#edit-anio-edicion').value || '';
+        disco.fechaAprox = modal.querySelector('#edit-fecha-aprox').checked;
+        disco.edicionAprox = modal.querySelector('#edit-edicion-aprox').checked;
         disco.formato = modal.querySelector('#edit-formato').value;
         disco.formatoDetalle = modal.querySelector('#edit-formato-detalle').value.trim();
         disco.sello = modal.querySelector('#edit-sello').value.trim();
@@ -1691,6 +1714,7 @@ elements.btnSearchWiki.addEventListener('click', async () => {
         
         if (datos.fecha) {
             elements.fecha.value = datos.fecha;
+            document.getElementById('fecha-aprox').checked = false;
             verificarFechaAlerta();
         } else {
             alert('No encontré la fecha. Ingresala manualmente.');
@@ -1736,6 +1760,8 @@ elements.btnFetchDiscogs.addEventListener('click', async () => {
             elements.artista.value = titleCase(disco.artista);
             elements.album.value = titleCase(disco.album);
             elements.fecha.value = disco.fecha;
+            document.getElementById('fecha-aprox').checked = false;
+            document.getElementById('edicion-aprox').checked = false;
             verificarFechaAlerta();
             if (disco.anioEdicion) document.getElementById('anio-edicion').value = disco.anioEdicion;
             elements.formato.value = disco.formato;
@@ -2004,6 +2030,8 @@ elements.form.addEventListener('submit', (e) => {
         album: elements.album.value.trim(),
         fecha: elements.fecha.value,
         anioEdicion: document.getElementById('anio-edicion').value || '',
+        fechaAprox: document.getElementById('fecha-aprox').checked,
+        edicionAprox: document.getElementById('edicion-aprox').checked,
         formato: elements.formato.value,
         formatoDetalle: document.getElementById('formato-detalle').value.trim(),
         sello: elements.sello.value.trim(),
@@ -2440,7 +2468,7 @@ function mergeDiscos(local, gist) {
         if (!existing) {
             merged.push(d);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;
@@ -2667,6 +2695,102 @@ document.querySelectorAll('.modal-close').forEach(btn => {
     });
 });
 
+document.getElementById('btn-investigar-fecha')?.addEventListener('click', () => {
+    const g = id => (document.getElementById(id)?.value || '').trim();
+    const artista = g('artista'), album = g('album');
+    if (!artista || !album) {
+        alert('Completá artista y álbum primero');
+        return;
+    }
+    const extras = [];
+    const sello = g('sello'), catalogo = g('catalogo'), barcode = g('barcode'),
+        runout = g('runout'), sidM = g('sid-mastering'), sidMo = g('sid-mould'),
+        anio = g('anio-edicion');
+    if (sello) extras.push(`sello ${sello}`);
+    if (catalogo) extras.push(`catálogo ${catalogo}`);
+    if (barcode) extras.push(`código de barras ${barcode}`);
+    if (runout) extras.push(`matriz ${runout}`);
+    if (sidM) extras.push(`SID mastering ${sidM}`);
+    if (sidMo) extras.push(`SID molde ${sidMo}`);
+    if (anio) extras.push(`edición ${anio}`);
+
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(
+        `"${artista}" "${album}" fecha lanzamiento disco${extras.length ? ' ' + extras.join(' ') : ''}`)}`, '_blank');
+
+    const prompt = `¿Cuál es la fecha exacta de lanzamiento (día, mes y año) del álbum "${album}" de ${artista}?`
+        + (extras.length ? ` Datos de mi edición: ${extras.join('; ')}.` : '')
+        + ` Si hay varias ediciones por país, indicame a cuál corresponde y la fuente.`;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(prompt).catch(() => {});
+    }
+    const btn = document.getElementById('btn-investigar-fecha');
+    btn.textContent = '¡Pregunta copiada! Pegala en Gemini';
+    setTimeout(() => { btn.textContent = '🔎 Investigar fecha (Google + Gemini)'; }, 3000);
+});
+
+// ============================================
+// GUÍA VISUAL: BRILLO DE PRÓXIMO PASO + CRUZ LIMPIAR
+// ============================================
+
+function bindGlow(inputIds, btn, check) {
+    if (!btn) return;
+    const update = () => btn.classList.toggle('btn-glow', !!check());
+    inputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', update);
+    });
+    update();
+}
+
+function initGuiaVisual() {
+    const val = id => (document.getElementById(id)?.value || '').trim();
+    bindGlow(['search-artista', 'search-album'],
+        document.getElementById('btn-search-wiki'),
+        () => val('search-artista') && val('search-album'));
+    bindGlow(['discogs-url'],
+        document.getElementById('btn-fetch-discogs'),
+        () => val('discogs-url'));
+    bindGlow(['discogs-search-value'],
+        document.getElementById('btn-discogs-search'),
+        () => val('discogs-search-value'));
+    bindGlow(['artista', 'album', 'fecha'],
+        elements.form.querySelector('button[type="submit"]'),
+        () => val('artista') && val('album') && val('fecha'));
+    document.getElementById('fecha')?.addEventListener('change', () =>
+        elements.form.querySelector('button[type="submit"]')
+            .classList.toggle('btn-glow', !!(val('artista') && val('album') && val('fecha'))));
+
+    const clearIds = ['buscar-coleccion', 'search-artista', 'search-album',
+        'discogs-url', 'discogs-search-value', 'discogs-search-artist',
+        'discogs-search-album', 'discogs-search-year',
+        'discogs-search-sid-mastering', 'discogs-search-sid-mould',
+        'artista', 'album', 'sello', 'genero', 'formato-detalle',
+        'runout', 'catalogo', 'barcode', 'sid-mastering', 'sid-mould',
+        'discogs-url-edit'];
+    clearIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input || input.parentElement.classList.contains('clear-wrap')) return;
+        const wrap = document.createElement('span');
+        wrap.className = 'clear-wrap';
+        input.parentElement.insertBefore(wrap, input);
+        wrap.appendChild(input);
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'clear-x';
+        x.textContent = '✕';
+        x.title = 'Borrar';
+        x.addEventListener('click', () => {
+            input.value = '';
+            input.focus();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        wrap.appendChild(x);
+        input.addEventListener('input', () =>
+            wrap.classList.toggle('has-text', !!input.value));
+        if (input.value) wrap.classList.add('has-text');
+    });
+}
+
 // ============================================
 // INICIALIZACIÓN
 // ============================================
@@ -2687,6 +2811,7 @@ async function init() {
     renderAll();
     verificarPermisosNotificacion();
     verificarNotificacionesHoy();
+    initGuiaVisual();
 }
 
 if (checkLogin()) {

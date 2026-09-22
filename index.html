@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.12</title>
+    <title>Mis Discos v0.9.13</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
@@ -231,6 +231,12 @@
                                 <input type="text" id="genero" placeholder="Hard Rock, Pop, etc.">
                             </div>
                         </div>
+                        <details class="precision-box">
+                            <summary>Precisión de fechas</summary>
+                            <label class="check-row"><input type="checkbox" id="fecha-aprox"> Fecha de lanzamiento no exacta</label>
+                            <label class="check-row"><input type="checkbox" id="edicion-aprox"> Año de edición no exacto</label>
+                            <button type="button" id="btn-investigar-fecha" class="btn-secondary">🔎 Investigar fecha (Google + Gemini)</button>
+                        </details>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="estado">Disco (Goldmine)</label>
