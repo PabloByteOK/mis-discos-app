@@ -336,10 +336,12 @@ function generarId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-function discoExiste(album, artista) {
-    return discos.some(d => 
-        d.album.toLowerCase() === album.toLowerCase() && 
-        d.artista.toLowerCase() === artista.toLowerCase()
+function discoExiste(album, artista, formato) {
+    const fmt = (formato || '').toLowerCase();
+    return discos.some(d =>
+        d.album.toLowerCase() === album.toLowerCase() &&
+        d.artista.toLowerCase() === artista.toLowerCase() &&
+        (d.formato || '').toLowerCase() === fmt
     );
 }
 
@@ -1084,8 +1086,8 @@ function renderAll() {
 
 function agregarDisco(disco) {
     // Verificar si ya existe
-    if (discoExiste(disco.album, disco.artista)) {
-        alert(`"${disco.album}" de ${disco.artista} ya está en tu colección.`);
+    if (discoExiste(disco.album, disco.artista, disco.formato)) {
+        alert(`"${disco.album}" de ${disco.artista} en formato ${disco.formato} ya está en tu colección.`);
         return false;
     }
     
@@ -2199,7 +2201,7 @@ document.getElementById('btn-import').addEventListener('change', (e) => {
             
             let agregados = 0;
             importados.forEach(d => {
-                if (!discoExiste(d.album, d.artista)) {
+                if (!discoExiste(d.album, d.artista, d.formato)) {
                     d.id = generarId();
                     discos.push(d);
                     agregados++;
@@ -2382,11 +2384,11 @@ function addDeletedId(id) {
         localStorage.setItem(DELETED_KEY, JSON.stringify(arr.slice(-500)));
     }
 }
-
-function mergeDiscos(local, gist) {    const merged = [...local];
-    const byKey = new Map(local.map(d => [`${d.artista}|${d.album}`.toLowerCase(), d]));
+function mergeDiscos(local, gist) {
+    const merged = [...local];
+    const byKey = new Map(local.map(d => [`${d.artista}|${d.album}|${d.formato || ''}`.toLowerCase(), d]));
     for (const d of gist) {
-        const key = `${d.artista}|${d.album}`.toLowerCase();
+        const key = `${d.artista}|${d.album}|${d.formato || ''}`.toLowerCase();
         const existing = byKey.get(key);
         if (!existing) {
             merged.push(d);
