@@ -223,23 +223,27 @@ function resizeImage(dataUrl, maxSize = 300) {
 }
 
 async function descargarTapa(url) {
-    // Usar images.weserv.nl como proxy de imágenes (soporta CORS)
-    const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&output=jpg&q=70`;
+    // Intentar directo primero, si falla usar proxy
+    const urls = [
+        url,
+        `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&output=jpg&q=70`
+    ];
     
-    try {
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const blob = await response.blob();
-        if (!blob.type.startsWith('image/')) throw new Error('No es imagen');
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(blob);
-        });
-    } catch (e) {
-        console.warn('Descarga de tapa falló:', e);
-        return null;
+    for (const tryUrl of urls) {
+        try {
+            const response = await fetch(tryUrl);
+            if (!response.ok) continue;
+            const blob = await response.blob();
+            if (!blob.type.startsWith('image/')) continue;
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) { /* try next */ }
     }
+    console.warn('Descarga de tapa falló para:', url);
+    return null;
 }
 
 // ============================================
@@ -1333,26 +1337,30 @@ function editarDisco(id) {
             try {
                 const info = extraerIdDiscogs(disco.discogsUrl);
                 if (!info) throw new Error('URL inválida');
+                console.log('Fetching tapa for:', info.tipo, info.id);
                 const typePath = info.tipo === 'master' ? 'masters' : 'releases';
                 const resp = await fetch(`https://api.discogs.com/${typePath}/${info.id}`, {
                     headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
                 });
-                if (!resp.ok) throw new Error('Discogs error');
+                if (!resp.ok) throw new Error(`Discogs HTTP ${resp.status}`);
                 const data = await resp.json();
+                console.log('Discogs response, images:', data.images?.length);
                 if (data.images && data.images.length > 0) {
                     const img = data.images.find(i => i.type === 'primary') || data.images[0];
+                    console.log('Downloading image:', img.uri);
                     const tapaUrl = await descargarTapa(img.uri);
                     if (tapaUrl) {
                         editTapaUrl = tapaUrl;
                         const container = modal.querySelector('#edit-tapa-container');
                         container.innerHTML = `<img id="edit-tapa-img" src="${tapaUrl}" alt="Tapa">`;
                     } else {
-                        throw new Error('No se pudo descargar');
+                        throw new Error('No se pudo descargar la imagen');
                     }
                 } else {
-                    throw new Error('Sin imágenes');
+                    throw new Error('Sin imágenes en Discogs');
                 }
             } catch (e) {
+                console.error('Error descargando tapa:', e);
                 editTapaFetch.textContent = '❌ Error';
                 setTimeout(() => { editTapaFetch.textContent = '⬇ Descargar'; editTapaFetch.disabled = false; }, 2000);
                 return;
