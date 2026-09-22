@@ -398,14 +398,17 @@ section h3 {
 
 /* Botón de próximo paso iluminado */
 .btn-glow {
-    border-color: var(--accent-light) !important;
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
-    animation: glowPulse 1.6s ease-in-out infinite;
+    border-color: #fff !important;
+    background: linear-gradient(135deg, #d4d4d4 0%, #f0f0f0 50%, #b0b0b0 100%) !important;
+    color: #111 !important;
+    font-weight: 700;
+    box-shadow: 0 0 22px rgba(255, 255, 255, 0.55);
+    animation: glowPulse 1.2s ease-in-out infinite;
 }
 
 @keyframes glowPulse {
-    0%, 100% { box-shadow: 0 0 8px rgba(255, 255, 255, 0.25); }
-    50% { box-shadow: 0 0 16px rgba(255, 255, 255, 0.45); }
+    0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.35); transform: scale(1); }
+    50% { box-shadow: 0 0 26px rgba(255, 255, 255, 0.7); transform: scale(1.03); }
 }
 
 /* Cruz para limpiar campos */
