@@ -1339,12 +1339,19 @@ function editarDisco(id) {
                 const info = extraerIdDiscogs(disco.discogsUrl);
                 if (!info) throw new Error('URL inválida');
                 const typePath = info.tipo === 'master' ? 'masters' : 'releases';
-                const resp = await fetch(`https://api.discogs.com/${typePath}/${info.id}`, {
+                let resp = await fetch(`https://api.discogs.com/${typePath}/${info.id}`, {
                     headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
                 });
                 if (resp.status === 429) throw new Error('Rate limit — esperá un minuto');
                 if (!resp.ok) throw new Error(`Discogs HTTP ${resp.status}`);
-                const data = await resp.json();
+                let data = await resp.json();
+                // Si no tiene imágenes y es release, intentar con el master
+                if ((!data.images || data.images.length === 0) && data.master_id) {
+                    const mResp = await fetch(`https://api.discogs.com/masters/${data.master_id}`, {
+                        headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+                    });
+                    if (mResp.ok) data = await mResp.json();
+                }
                 if (data.images && data.images.length > 0) {
                     const img = data.images.find(i => i.type === 'primary') || data.images[0];
                     const tapaUrl = await descargarTapa(img.uri);
@@ -2494,7 +2501,14 @@ async function syncFromGist() {
                         continue;
                     }
                     if (!resp.ok) continue;
-                    const data = await resp.json();
+                    let data = await resp.json();
+                    // Si no tiene imágenes y es release, intentar con el master
+                    if ((!data.images || data.images.length === 0) && data.master_id) {
+                        const mResp = await fetch(`https://api.discogs.com/masters/${data.master_id}`, {
+                            headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+                        });
+                        if (mResp.ok) data = await mResp.json();
+                    }
                     if (data.images && data.images.length > 0) {
                         const img = data.images.find(i => i.type === 'primary') || data.images[0];
                         const tapaUrl = await descargarTapa(img.uri);
