@@ -26,6 +26,13 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
+    // Solo interceptar requests locales, dejar pasar APIs externas
+    if (url.origin !== location.origin) {
+        return;
+    }
+
     event.respondWith(
         fetch(event.request)
             .then(response => {
