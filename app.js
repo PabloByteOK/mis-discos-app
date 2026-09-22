@@ -223,10 +223,10 @@ function resizeImage(dataUrl, maxSize = 300) {
 }
 
 async function descargarTapa(url) {
-    // Intentar directo primero, si falla usar proxy
+    // Proxy primero (evita CORS), directo como fallback
     const urls = [
-        url,
-        `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&output=jpg&q=70`
+        `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&output=jpg&q=70`,
+        url
     ];
     
     for (const tryUrl of urls) {
@@ -244,6 +244,10 @@ async function descargarTapa(url) {
     }
     console.warn('Descarga de tapa falló para:', url);
     return null;
+}
+
+function esperar(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ============================================
@@ -1337,17 +1341,15 @@ function editarDisco(id) {
             try {
                 const info = extraerIdDiscogs(disco.discogsUrl);
                 if (!info) throw new Error('URL inválida');
-                console.log('Fetching tapa for:', info.tipo, info.id);
                 const typePath = info.tipo === 'master' ? 'masters' : 'releases';
                 const resp = await fetch(`https://api.discogs.com/${typePath}/${info.id}`, {
                     headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
                 });
+                if (resp.status === 429) throw new Error('Rate limit — esperá un minuto');
                 if (!resp.ok) throw new Error(`Discogs HTTP ${resp.status}`);
                 const data = await resp.json();
-                console.log('Discogs response, images:', data.images?.length);
                 if (data.images && data.images.length > 0) {
                     const img = data.images.find(i => i.type === 'primary') || data.images[0];
-                    console.log('Downloading image:', img.uri);
                     const tapaUrl = await descargarTapa(img.uri);
                     if (tapaUrl) {
                         editTapaUrl = tapaUrl;
@@ -2479,7 +2481,8 @@ async function syncFromGist() {
         const sinTapa = merged.filter(d => !d.tapa && d.discogsUrl);
         if (sinTapa.length > 0) {
             updateSyncStatus(`Sync OK — descargando ${sinTapa.length} tapas...`, 'ok');
-            for (const d of sinTapa) {
+            for (let i = 0; i < sinTapa.length; i++) {
+                const d = sinTapa[i];
                 try {
                     const info = extraerIdDiscogs(d.discogsUrl);
                     if (!info) continue;
@@ -2488,6 +2491,11 @@ async function syncFromGist() {
                     const resp = await fetch(apiUrl, {
                         headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
                     });
+                    if (resp.status === 429) {
+                        console.warn('Rate limited, esperando 5s...');
+                        await esperar(5000);
+                        continue;
+                    }
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     if (data.images && data.images.length > 0) {
@@ -2499,6 +2507,7 @@ async function syncFromGist() {
                         }
                     }
                 } catch (e) { /* skip */ }
+                if (i < sinTapa.length - 1) await esperar(1200);
             }
             renderAll();
             updateSyncStatus(`Sync OK (${merged.length} discos, tapas actualizadas)`, 'ok');
