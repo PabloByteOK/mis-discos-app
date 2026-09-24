@@ -2764,10 +2764,10 @@ function investigarEdicion(d, btn) {
     if (d.sidMould) extras.push(`SID molde ${d.sidMould}`);
     if (d.anioEdicion) extras.push(`edición ${d.anioEdicion}`);
 
-    window.open(`https://www.bing.com/chat?q=${encodeURIComponent(
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(
         `Fecha exacta de lanzamiento del álbum "${d.album}" de ${d.artista}`
         + (extras.length ? `. Datos de mi edición: ${extras.join('; ')}.` : '')
-        + ` Si hay varias ediciones por país, indicame a cuál corresponde y la fuente.`)}`, '_blank');
+        + ` Si hay varias ediciones por país, indicame a cuál corresponde y la fuente.`)}&udm=50`, '_blank');
 
     const prompt = `¿Cuál es la fecha exacta de lanzamiento (día, mes y año) del álbum "${d.album}" de ${d.artista}?`
         + (extras.length ? ` Datos de mi edición: ${extras.join('; ')}.` : '')
