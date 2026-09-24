@@ -1172,6 +1172,7 @@ function editarDisco(id) {
                         <label>Fechas aprox.</label>
                         <label class="check-row"><input type="checkbox" id="edit-fecha-aprox" ${disco.fechaAprox ? 'checked' : ''}> Lanz.</label>
                         <label class="check-row"><input type="checkbox" id="edit-edicion-aprox" ${disco.edicionAprox ? 'checked' : ''}> Edic.</label>
+                        <button type="button" class="btn-secondary" id="edit-investigar" style="font-size:0.75rem;margin-top:4px">🔎 + investigación de mi edición</button>
                     </div>
                     <div class="form-group">
                         <label>Formato</label>
@@ -1358,6 +1359,20 @@ function editarDisco(id) {
             document.getElementById('discogs-search-box').open = true;
             document.getElementById('discogs-search-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
             document.getElementById('discogs-search-value').focus();
+        });
+    }
+
+    const editInvestigar = modal.querySelector('#edit-investigar');
+    if (editInvestigar) {
+        editInvestigar.addEventListener('click', () => {
+            const mv = s => (modal.querySelector(s)?.value || '').trim();
+            investigarEdicion({
+                artista: mv('#edit-artista'), album: mv('#edit-album'),
+                sello: mv('#edit-sello'), catalogo: mv('#edit-catalogo'),
+                barcode: mv('#edit-barcode'), runout: mv('#edit-runout'),
+                sidMastering: mv('#edit-sid-mastering'), sidMould: mv('#edit-sid-mould'),
+                anioEdicion: mv('#edit-anio-edicion')
+            }, editInvestigar);
         });
     }
 
@@ -2720,37 +2735,42 @@ document.querySelectorAll('.modal-close').forEach(btn => {
     });
 });
 
-document.getElementById('btn-investigar-fecha')?.addEventListener('click', () => {
-    const g = id => (document.getElementById(id)?.value || '').trim();
-    const artista = g('artista'), album = g('album');
-    if (!artista || !album) {
+function investigarEdicion(d, btn) {
+    if (!d.artista || !d.album) {
         alert('Completá artista y álbum primero');
         return;
     }
     const extras = [];
-    const sello = g('sello'), catalogo = g('catalogo'), barcode = g('barcode'),
-        runout = g('runout'), sidM = g('sid-mastering'), sidMo = g('sid-mould'),
-        anio = g('anio-edicion');
-    if (sello) extras.push(`sello ${sello}`);
-    if (catalogo) extras.push(`catálogo ${catalogo}`);
-    if (barcode) extras.push(`código de barras ${barcode}`);
-    if (runout) extras.push(`matriz ${runout}`);
-    if (sidM) extras.push(`SID mastering ${sidM}`);
-    if (sidMo) extras.push(`SID molde ${sidMo}`);
-    if (anio) extras.push(`edición ${anio}`);
+    if (d.sello) extras.push(`sello ${d.sello}`);
+    if (d.catalogo) extras.push(`catálogo ${d.catalogo}`);
+    if (d.barcode) extras.push(`código de barras ${d.barcode}`);
+    if (d.runout) extras.push(`matriz ${d.runout}`);
+    if (d.sidMastering) extras.push(`SID mastering ${d.sidMastering}`);
+    if (d.sidMould) extras.push(`SID molde ${d.sidMould}`);
+    if (d.anioEdicion) extras.push(`edición ${d.anioEdicion}`);
 
     window.open(`https://www.google.com/search?q=${encodeURIComponent(
-        `"${artista}" "${album}" fecha lanzamiento disco${extras.length ? ' ' + extras.join(' ') : ''}`)}`, '_blank');
+        `"${d.artista}" "${d.album}" fecha lanzamiento disco${extras.length ? ' ' + extras.join(' ') : ''}`)}`, '_blank');
 
-    const prompt = `¿Cuál es la fecha exacta de lanzamiento (día, mes y año) del álbum "${album}" de ${artista}?`
+    const prompt = `¿Cuál es la fecha exacta de lanzamiento (día, mes y año) del álbum "${d.album}" de ${d.artista}?`
         + (extras.length ? ` Datos de mi edición: ${extras.join('; ')}.` : '')
         + ` Si hay varias ediciones por país, indicame a cuál corresponde y la fuente.`;
     if (navigator.clipboard) {
         navigator.clipboard.writeText(prompt).catch(() => {});
     }
-    const btn = document.getElementById('btn-investigar-fecha');
+    const original = btn.textContent;
     btn.textContent = '¡Pregunta copiada! Pegala en Gemini';
-    setTimeout(() => { btn.textContent = '🔎 Investigar fecha (Google + Gemini)'; }, 3000);
+    setTimeout(() => { btn.textContent = original; }, 3000);
+}
+
+document.getElementById('btn-investigar-fecha')?.addEventListener('click', () => {
+    const g = id => (document.getElementById(id)?.value || '').trim();
+    investigarEdicion({
+        artista: g('artista'), album: g('album'), sello: g('sello'),
+        catalogo: g('catalogo'), barcode: g('barcode'), runout: g('runout'),
+        sidMastering: g('sid-mastering'), sidMould: g('sid-mould'),
+        anioEdicion: g('anio-edicion')
+    }, document.getElementById('btn-investigar-fecha'));
 });
 
 // ============================================
