@@ -987,10 +987,10 @@ function renderAniversarios() {
             <div class="anniversary-card ${claseCard}">
                 <div class="anniversary-header">
                     ${disco.tapa ? `<img class="anniversary-tapa" src="${disco.tapa}" alt="Tapa">` : ''}
-                    <div>
+                    <div class="anniversary-title">
                         <h3>${titleCase(disco.album)}</h3>
-                        <span class="dias-badge ${claseDias}">${textoDias}</span>
                     </div>
+                    <span class="dias-badge ${claseDias}">${textoDias}</span>
                 </div>
                 <div class="anniversary-details">
                     <span class="artista">${titleCase(disco.artista)}</span> · 
@@ -2603,46 +2603,57 @@ async function syncFromGist() {
         renderAll();
 
         // Paso 5: Re-descargar tapas faltantes de Discogs en background
-        const sinTapa = merged.filter(d => !d.tapa && d.discogsUrl);
+        // Incluye tapas remotas (http): pueden expirar, se reintentan a base64
+        const sinTapa = merged.filter(d => (!d.tapa || d.tapa.startsWith('http')) && d.discogsUrl);
+        const dToken = localStorage.getItem('discogs_token') || '';
+        const dAuth = dToken ? `?token=${dToken}` : '';
+        let tapasOk = 0, tapasFallidas = 0;
         if (sinTapa.length > 0) {
             updateSyncStatus(`Sync OK — descargando ${sinTapa.length} tapas...`, 'ok');
             for (let i = 0; i < sinTapa.length; i++) {
                 const d = sinTapa[i];
-                try {
-                    const info = extraerIdDiscogs(d.discogsUrl);
-                    if (!info) continue;
-                    const typePath = info.tipo === 'master' ? 'masters' : 'releases';
-                    const apiUrl = `https://api.discogs.com/${typePath}/${info.id}`;
-                    const resp = await fetch(apiUrl, {
-                        headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
-                    });
-                    if (resp.status === 429) {
-                        console.warn('Rate limited, esperando 5s...');
-                        await esperar(5000);
-                        continue;
-                    }
-                    if (!resp.ok) continue;
-                    let data = await resp.json();
-                    // Si no tiene imágenes y es release, intentar con el master
-                    if ((!data.images || data.images.length === 0) && data.master_id) {
-                        const mResp = await fetch(`https://api.discogs.com/masters/${data.master_id}`, {
+                let ok = false;
+                for (let intento = 0; intento < 3 && !ok; intento++) {
+                    try {
+                        const info = extraerIdDiscogs(d.discogsUrl);
+                        if (!info) break;
+                        const typePath = info.tipo === 'master' ? 'masters' : 'releases';
+                        const apiUrl = `https://api.discogs.com/${typePath}/${info.id}`;
+                        const resp = await fetch(apiUrl + dAuth, {
                             headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
                         });
-                        if (mResp.ok) data = await mResp.json();
-                    }
-                    if (data.images && data.images.length > 0) {
-                        const img = data.images.find(i => i.type === 'primary') || data.images[0];
-                        const tapaUrl = await descargarTapa(img.uri);
-                        if (tapaUrl) {
-                            d.tapa = tapaUrl;
-                            await dbSetTapa(d.id, tapaUrl);
+                        if (resp.status === 429) {
+                            console.warn('Rate limited, esperando 5s y reintentando...');
+                            await esperar(5000);
+                            continue;
                         }
-                    }
-                } catch (e) { /* skip */ }
+                        if (!resp.ok) break;
+                        let data = await resp.json();
+                        // Si no tiene imágenes y es release, intentar con el master
+                        if ((!data.images || data.images.length === 0) && data.master_id) {
+                            const mResp = await fetch(`https://api.discogs.com/masters/${data.master_id}${dAuth}`, {
+                                headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+                            });
+                            if (mResp.ok) data = await mResp.json();
+                        }
+                        if (data.images && data.images.length > 0) {
+                            const img = data.images.find(img => img.type === 'primary') || data.images[0];
+                            const tapaUrl = await descargarTapa(img.uri);
+                            if (tapaUrl) {
+                                d.tapa = tapaUrl;
+                                if (tapaUrl.startsWith('data:')) await dbSetTapa(d.id, tapaUrl);
+                                ok = true;
+                            } else break;
+                        } else break;
+                    } catch (e) { break; }
+                }
+                if (ok) tapasOk++; else tapasFallidas++;
                 if (i < sinTapa.length - 1) await esperar(1200);
             }
             renderAll();
-            updateSyncStatus(`Sync OK (${merged.length} discos, tapas actualizadas)`, 'ok');
+            updateSyncStatus(
+                `Sync OK (${merged.length} discos, ${tapasOk} tapas)` +
+                (tapasFallidas ? ` — ${tapasFallidas} pendientes, reintentá con sync` : ''), 'ok');
         }
 
         localStorage.setItem('sync_last', new Date().toISOString());

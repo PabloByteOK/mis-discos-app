@@ -1227,6 +1227,16 @@ button#btn-fetch-discogs:hover {
     font-weight: 600;
 }
 
+.anniversary-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.anniversary-header .dias-badge {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
 .anniversary-details {
     color: var(--text-secondary);
     font-size: 0.8rem;
