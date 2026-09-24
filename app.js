@@ -1494,6 +1494,11 @@ function limpiarFormulario() {
     elements.tapaPreview.classList.add('hidden');
     elements.tapaPlaceholder.classList.remove('hidden');
     elements.tapaFile.value = '';
+    ['search-artista', 'search-album', 'discogs-url', 'discogs-search-value',
+     'artista', 'album', 'fecha'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
 }
 
 // ============================================
@@ -1715,11 +1720,15 @@ elements.btnSearchWiki.addEventListener('click', async () => {
         // Llenar el formulario
         elements.artista.value = titleCase(artista);
         elements.album.value = titleCase(album);
+        ['artista', 'album'].forEach(id =>
+            document.getElementById(id).dispatchEvent(new Event('input', { bubbles: true })));
         
         if (datos.fecha) {
             elements.fecha.value = datos.fecha;
             document.getElementById('fecha-aprox').checked = false;
             verificarFechaAlerta();
+            ['artista', 'album', 'fecha'].forEach(id =>
+                document.getElementById(id).dispatchEvent(new Event('input', { bubbles: true })));
         } else {
             alert('No encontré la fecha. Ingresala manualmente.');
             elements.fecha.focus();
@@ -1789,6 +1798,12 @@ elements.btnFetchDiscogs.addEventListener('click', async () => {
             }
             
             elements.discogsUrl.value = '';
+            ['artista', 'album', 'fecha', 'discogs-url', 'sello', 'genero',
+             'formato-detalle', 'runout', 'catalogo', 'barcode',
+             'sid-mastering', 'sid-mould'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+            });
         }
     } catch (error) {
         console.error('Error:', error);
