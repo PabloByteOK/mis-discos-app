@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.15</title>
-    <link rel="stylesheet" href="styles.css?v=0.9.15">
+    <title>Mis Discos v0.9.16</title>
+    <link rel="stylesheet" href="styles.css?v=0.9.16">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -236,48 +236,6 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="estado">Disco (Goldmine)</label>
-                                <select id="estado">
-                                    <option value="">Sin calificar</option>
-                                    <option value="M">M - Mint</option>
-                                    <option value="NM">NM - Near Mint</option>
-                                    <option value="NM-">NM- - Near Mint Minus</option>
-                                    <option value="EX+">EX+ - Excellent Plus</option>
-                                    <option value="EX">EX - Excellent</option>
-                                    <option value="EX-">EX- - Excellent Minus</option>
-                                    <option value="VG+">VG+ - Very Good Plus</option>
-                                    <option value="VG">VG - Very Good</option>
-                                    <option value="VG-">VG- - Very Good Minus</option>
-                                    <option value="G+">G+ - Good Plus</option>
-                                    <option value="G">G - Good</option>
-                                    <option value="G-">G- - Good Minus</option>
-                                    <option value="F">F - Fair</option>
-                                    <option value="P">P - Poor</option>
-                                    <option value="X">X - Junk</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="estado-tapa">Tapa</label>
-                                <select id="estado-tapa">
-                                    <option value="">Sin calificar</option>
-                                    <option value="M">M - Mint</option>
-                                    <option value="NM">NM - Near Mint</option>
-                                    <option value="EX">EX - Excelente</option>
-                                    <option value="VG">VG - Buen estado</option>
-                                    <option value="G">G - Desgaste</option>
-                                    <option value="F">F - Muy deteriorada</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="tiene-insert">¿Tiene insert?</label>
-                                <select id="tiene-insert">
-                                    <option value="no">No</option>
-                                    <option value="si">Sí</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
                                 <label for="notas">Notas / Dato curioso</label>
                                 <textarea id="notas" placeholder="Dato para tu reseña de Instagram..." rows="2"></textarea>
                             </div>
@@ -302,6 +260,47 @@
                             <div class="form-group">
                                 <label for="formato-detalle">Ejemplares / Detalle</label>
                                 <input type="text" id="formato-detalle" placeholder="2 x Vinyl, LP">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="estado">ESTADO (GOLDMINE)</label>
+                                <select id="estado">
+                                    <option value="">Sin calificar</option>
+                                    <option value="M">M - Mint</option>
+                                    <option value="NM">NM - Near Mint</option>
+                                    <option value="NM-">NM- - Near Mint Minus</option>
+                                    <option value="EX+">EX+ - Excellent Plus</option>
+                                    <option value="EX-">EX- - Excellent Minus</option>
+                                    <option value="VG+">VG+ - Very Good Plus</option>
+                                    <option value="VG">VG - Very Good</option>
+                                    <option value="VG-">VG- - Very Good Minus</option>
+                                    <option value="G+">G+ - Good Plus</option>
+                                    <option value="G">G - Good</option>
+                                    <option value="G-">G- - Good Minus</option>
+                                    <option value="F">F - Fair</option>
+                                    <option value="P">P - Poor</option>
+                                    <option value="X">X - Junk</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="estado-tapa">Tapa</label>
+                                <select id="estado-tapa">
+                                    <option value="">Sin calificar</option>
+                                    <option value="M">M - Mint</option>
+                                    <option value="NM">NM - Near Mint</option>
+                                    <option value="EX">EX - Excelente</option>
+                                    <option value="VG">VG - Buen estado</option>
+                                    <option value="G">G - Desgaste</option>
+                                    <option value="F">F - Muy deteriorada</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tiene-insert">¿Tiene insert?</label>
+                                <select id="tiene-insert">
+                                    <option value="no">No</option>
+                                    <option value="si">Sí</option>
+                                </select>
                             </div>
                         </div>
                         <details class="precision-box">
@@ -434,7 +433,7 @@
         </nav>
     </div> <!-- cierra app-main -->
 
-    <script src="app.js?v=0.9.15"></script>
+    <script src="app.js?v=0.9.16"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');

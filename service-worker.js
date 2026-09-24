@@ -1,9 +1,9 @@
-const CACHE_NAME = 'mis-discos-v0.9.15';
+const CACHE_NAME = 'mis-discos-v0.9.16';
 const ASSETS = [
     './',
     './index.html',
-    './styles.css?v=0.9.15',
-    './app.js?v=0.9.15',
+    './styles.css?v=0.9.16',
+    './app.js?v=0.9.16',
     './manifest.json',
     './icon-192.png',
     './icon-512.png'
