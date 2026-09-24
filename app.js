@@ -1269,11 +1269,11 @@ function editarDisco(id) {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>SID mastering (CD)</label>
+                        <label>IFPI mastering (CD)</label>
                         <input type="text" id="edit-sid-mastering" value="${disco.sidMastering || ''}">
                     </div>
                     <div class="form-group">
-                        <label>SID molde (CD)</label>
+                        <label>IFPI molde (CD)</label>
                         <input type="text" id="edit-sid-mould" value="${disco.sidMould || ''}">
                     </div>
                 </div>
@@ -1347,8 +1347,12 @@ function editarDisco(id) {
     const editBuscarEdicion = modal.querySelector('#edit-buscar-edicion');
     if (editBuscarEdicion) {
         editBuscarEdicion.addEventListener('click', () => {
-            document.getElementById('discogs-search-artist').value = disco.artista || '';
-            document.getElementById('discogs-search-album').value = disco.album || '';
+            const searchArtist = document.getElementById('discogs-search-artist');
+            const searchAlbum = document.getElementById('discogs-search-album');
+            searchArtist.value = disco.artista || '';
+            searchAlbum.value = disco.album || '';
+            searchArtist.dispatchEvent(new Event('input', { bubbles: true }));
+            searchAlbum.dispatchEvent(new Event('input', { bubbles: true }));
             modal.remove();
             navegarA('screen-agregar');
             document.getElementById('discogs-search-box').open = true;
@@ -1432,8 +1436,8 @@ function editarDisco(id) {
         disco.runout = modal.querySelector('#edit-runout').value.trim();
         disco.catalogo = modal.querySelector('#edit-catalogo').value.trim();
         disco.barcode = modal.querySelector('#edit-barcode').value.trim();
-        disco.sidMastering = modal.querySelector('#edit-sid-mastering').value.trim();
-        disco.sidMould = modal.querySelector('#edit-sid-mould').value.trim();
+        disco.sidMastering = modal.querySelector('#edit-sid-mastering').value.trim().toUpperCase();
+        disco.sidMould = modal.querySelector('#edit-sid-mould').value.trim().toUpperCase();
         disco.discogsUrl = modal.querySelector('#edit-discogs-url').value.trim();
         disco.precioUsd = modal.querySelector('#edit-precio-usd').value || '';
         disco.cotizacionBlue = disco.cotizacionBlue || cotizacionBlue || '';
@@ -1916,6 +1920,7 @@ document.getElementById('btn-discogs-search')?.addEventListener('click', async (
 
 function usarDiscogsUrl(url) {
     elements.discogsUrl.value = url;
+    elements.discogsUrl.dispatchEvent(new Event('input', { bubbles: true }));
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
     document.getElementById('discogs-link-box').open = true;
     elements.discogsUrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2042,8 +2047,8 @@ elements.form.addEventListener('submit', (e) => {
         runout: document.getElementById('runout').value.trim(),
         catalogo: document.getElementById('catalogo').value.trim(),
         barcode: document.getElementById('barcode').value.trim(),
-        sidMastering: document.getElementById('sid-mastering').value.trim(),
-        sidMould: document.getElementById('sid-mould').value.trim(),
+        sidMastering: document.getElementById('sid-mastering').value.trim().toUpperCase(),
+        sidMould: document.getElementById('sid-mould').value.trim().toUpperCase(),
         discogsUrl: document.getElementById('discogs-url-edit').value.trim(),
         precioUsd: document.getElementById('precio-usd').value || '',
         cotizacionBlue: cotizacionBlue || '',
@@ -2182,19 +2187,19 @@ document.getElementById('btn-export-xml').addEventListener('click', () => {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<coleccion discos="' + discos.length + '">\n';
     discos.forEach(d => {
         xml += '  <disco>\n';
-        xml += `    <artista>${escapeXml(d.artista)}</artista>\n`;
-        xml += `    <album>${escapeXml(d.album)}</album>\n`;
+        xml += `    <artista>${escapeXml(expT(d.artista))}</artista>\n`;
+        xml += `    <album>${escapeXml(expT(d.album))}</album>\n`;
         xml += `    <fecha>${fechaFormateada(d.fecha)}</fecha>\n`;
         xml += `    <formato>${d.formato}</formato>\n`;
-        xml += `    <sello>${escapeXml(d.sello || '')}</sello>\n`;
-        xml += `    <genero>${escapeXml(d.genero || '')}</genero>\n`;
+        xml += `    <sello>${escapeXml(expT(d.sello))}</sello>\n`;
+        xml += `    <genero>${escapeXml(expT(d.genero))}</genero>\n`;
         xml += `    <anioEdicion>${d.anioEdicion || ''}</anioEdicion>\n`;
         xml += `    <estado>${d.estado || ''}</estado>\n`;
         xml += `    <estadoTapa>${d.estadoTapa || ''}</estadoTapa>\n`;
         xml += `    <tieneInsert>${d.tieneInsert || 'no'}</tieneInsert>\n`;
-        xml += `    <runout>${escapeXml(d.runout || '')}</runout>\n`;
-        xml += `    <catalogo>${escapeXml(d.catalogo || '')}</catalogo>\n`;
-        xml += `    <barcode>${escapeXml(d.barcode || '')}</barcode>\n`;
+        xml += `    <runout>${escapeXml(expC(d.runout))}</runout>\n`;
+        xml += `    <catalogo>${escapeXml(expC(d.catalogo))}</catalogo>\n`;
+        xml += `    <barcode>${escapeXml(expC(d.barcode))}</barcode>\n`;
         xml += `    <discogsUrl>${escapeXml(d.discogsUrl || '')}</discogsUrl>\n`;
         xml += `    <precioUsd>${d.precioUsd || ''}</precioUsd>\n`;
         xml += `    <cotizacionBlue>${d.cotizacionBlue || ''}</cotizacionBlue>\n`;
@@ -2208,6 +2213,11 @@ document.getElementById('btn-export-xml').addEventListener('click', () => {
 function escapeXml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+// Normalización solo para exports (no toca la colección):
+// nombres en Tipo Título, códigos en MAYÚSCULAS, texto libre intacto
+function expT(s) { return titleCase(s || ''); }
+function expC(s) { return (s || '').toUpperCase(); }
 
 // DOC (HTML compatible con Word)
 document.getElementById('btn-export-doc').addEventListener('click', () => {
@@ -2228,7 +2238,7 @@ tr:nth-child(even) { background: #f5f5f5; }
 <table>
 <tr><th>#</th><th>Artista</th><th>Álbum</th><th>Fecha</th><th>Edición</th><th>Formato</th><th>Sello</th><th>Género</th><th>Estado</th><th>Tapa</th><th>Catálogo</th><th>Runout</th><th>Precio USD</th></tr>`;
     discos.forEach((d, i) => {
-        html += `<tr><td>${i + 1}</td><td>${d.artista}</td><td>${d.album}</td><td>${fechaFormateada(d.fecha)}</td><td>${d.anioEdicion || '-'}</td><td class="formato">${d.formato}</td><td>${d.sello || '-'}</td><td>${d.genero || '-'}</td><td>${d.estado || '-'}</td><td>${d.estadoTapa || '-'}</td><td>${d.catalogo || '-'}</td><td>${d.runout || '-'}</td><td>${d.precioUsd ? '$' + d.precioUsd + ' USD' : '-'}</td></tr>`;
+        html += `<tr><td>${i + 1}</td><td>${expT(d.artista)}</td><td>${expT(d.album)}</td><td>${fechaFormateada(d.fecha)}</td><td>${d.anioEdicion || '-'}</td><td class="formato">${d.formato}</td><td>${expT(d.sello) || '-'}</td><td>${expT(d.genero) || '-'}</td><td>${d.estado || '-'}</td><td>${d.estadoTapa || '-'}</td><td>${expC(d.catalogo) || '-'}</td><td>${expC(d.runout) || '-'}</td><td>${d.precioUsd ? '$' + d.precioUsd + ' USD' : '-'}</td></tr>`;
     });
     html += `</table><div class="footer">Generado por Mis Discos App</div></body></html>`;
     descargarArchivo(html, `mis-discos-${new Date().toISOString().split('T')[0]}.doc`, 'application/msword');
@@ -2239,7 +2249,7 @@ document.getElementById('btn-export-pdf').addEventListener('click', () => {
     const win = window.open('', '_blank');
     let bodyRows = '';
     discos.forEach((d, i) => {
-        bodyRows += `<tr><td>${i + 1}</td><td>${d.artista}</td><td>${d.album}</td><td>${fechaFormateada(d.fecha)}</td><td>${d.anioEdicion || '-'}</td><td>${d.formato}</td><td>${d.sello || '-'}</td><td>${d.genero || '-'}</td><td>${d.estado || '-'}</td><td>${d.estadoTapa || '-'}</td><td>${d.catalogo || '-'}</td><td>${d.precioUsd ? '$' + d.precioUsd + ' USD' : '-'}</td></tr>`;
+        bodyRows += `<tr><td>${i + 1}</td><td>${expT(d.artista)}</td><td>${expT(d.album)}</td><td>${fechaFormateada(d.fecha)}</td><td>${d.anioEdicion || '-'}</td><td>${d.formato}</td><td>${expT(d.sello) || '-'}</td><td>${expT(d.genero) || '-'}</td><td>${d.estado || '-'}</td><td>${d.estadoTapa || '-'}</td><td>${expC(d.catalogo) || '-'}</td><td>${d.precioUsd ? '$' + d.precioUsd + ' USD' : '-'}</td></tr>`;
     });
     win.document.write(`<!DOCTYPE html><html><head><title>Mis Discos</title>
 <style>

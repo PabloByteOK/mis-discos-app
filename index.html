@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.14</title>
-    <link rel="stylesheet" href="styles.css?v=0.9.14">
+    <title>Mis Discos v0.9.15</title>
+    <link rel="stylesheet" href="styles.css?v=0.9.15">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -203,23 +203,6 @@
                                     <span id="fecha-alert" class="fecha-alert hidden" title="Fecha no verificada — solo año conocido">⚠</span>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="anio-edicion">Año de edición</label>
-                                <input type="number" id="anio-edicion" placeholder="Ej: 1982" min="1900" max="2099">
-                            </div>
-                            <div class="form-group">
-                                <label for="formato">Formato</label>
-                                <select id="formato">
-                                    <option value="vinilo">Vinilo</option>
-                                    <option value="cd">CD</option>
-                                    <option value="cassette">Cassette</option>
-                                    <option value="otro">Otro</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="formato-detalle">Ejemplares / Detalle</label>
-                                <input type="text" id="formato-detalle" placeholder="2 x Vinyl, LP">
-                            </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -231,12 +214,26 @@
                                 <input type="text" id="genero" placeholder="Hard Rock, Pop, etc.">
                             </div>
                         </div>
-                        <details class="precision-box">
-                            <summary>Precisión de fechas</summary>
-                            <label class="check-row"><input type="checkbox" id="fecha-aprox"> Fecha de lanzamiento no exacta</label>
-                            <label class="check-row"><input type="checkbox" id="edicion-aprox"> Año de edición no exacto</label>
-                            <button type="button" id="btn-investigar-fecha" class="btn-secondary">🔎 Investigar fecha (Google + Gemini)</button>
-                        </details>
+                        <div class="form-group">
+                            <label>Tapa del disco</label>
+                            <div id="tapa-upload-area" class="tapa-upload-area tapa-inline">
+                                <div id="tapa-preview" class="tapa-preview hidden">
+                                    <img id="tapa-preview-img" src="" alt="Vista previa">
+                                    <button type="button" id="tapa-remove" class="tapa-remove-btn">✕</button>
+                                </div>
+                                <div id="tapa-placeholder" class="tapa-placeholder">
+                                    <span class="tapa-icon">📷</span>
+                                    <p>Subí la foto de la tapa</p>
+                                </div>
+                                <div class="tapa-buttons tapa-buttons-col">
+                                    <label class="btn-secondary tapa-btn">
+                                        📁 Elegir archivo
+                                        <input type="file" id="tapa-file" accept="image/*" hidden>
+                                    </label>
+                                    <button type="button" class="btn-secondary tapa-btn" id="btn-tapa-camera">📸 Tomar foto</button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="estado">Disco (Goldmine)</label>
@@ -287,44 +284,32 @@
                         </div>
                     </details>
                     <details class="form-section">
-                        <summary class="form-section-label">Tapa del disco</summary>
-                        <div id="tapa-upload-area" class="tapa-upload-area">
-                            <div id="tapa-preview" class="tapa-preview hidden">
-                                <img id="tapa-preview-img" src="" alt="Vista previa">
-                                <button type="button" id="tapa-remove" class="tapa-remove-btn">✕</button>
-                            </div>
-                            <div id="tapa-placeholder" class="tapa-placeholder">
-                                <span class="tapa-icon">📷</span>
-                                <p>Subí la foto de la tapa</p>
-                            </div>
-                            <div class="tapa-buttons">
-                                <label class="btn-secondary tapa-btn">
-                                    📁 Elegir archivo
-                                    <input type="file" id="tapa-file" accept="image/*" hidden>
-                                </label>
-                                <button type="button" class="btn-secondary tapa-btn" id="btn-tapa-camera">📸 Tomar foto</button>
-                            </div>
-                        </div>
-                    </details>
-                    <details class="form-section">
-                        <summary class="form-section-label">Precio</summary>
-                        <div class="form-row-3">
-                            <div class="form-group">
-                                <label for="precio-usd">Precio (USD)</label>
-                                <input type="number" id="precio-usd" step="0.01" min="0" placeholder="Ej: 25.50" oninput="calcularPrecioArs()">
-                            </div>
-                            <div class="form-group">
-                                <label>Dólar blue compra <button type="button" onclick="fetchCotizacionBlue()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.8rem;padding:0 4px;">↻</button></label>
-                                <div id="dolar-blue-display" class="dolar-display">Cargando...</div>
-                            </div>
-                            <div class="form-group">
-                                <label>Equivalente en ARS</label>
-                                <div id="precio-ars-display" class="dolar-display">—</div>
-                            </div>
-                        </div>
-                    </details>
-                    <details class="form-section">
                         <summary class="form-section-label">Datos de edición (Discogs)</summary>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="anio-edicion">Año de edición</label>
+                                <input type="number" id="anio-edicion" placeholder="Ej: 1982" min="1900" max="2099">
+                            </div>
+                            <div class="form-group">
+                                <label for="formato">Formato</label>
+                                <select id="formato">
+                                    <option value="vinilo">Vinilo</option>
+                                    <option value="cd">CD</option>
+                                    <option value="cassette">Cassette</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="formato-detalle">Ejemplares / Detalle</label>
+                                <input type="text" id="formato-detalle" placeholder="2 x Vinyl, LP">
+                            </div>
+                        </div>
+                        <details class="precision-box">
+                            <summary>Precisión de fechas</summary>
+                            <label class="check-row"><input type="checkbox" id="fecha-aprox"> Fecha de lanzamiento no exacta</label>
+                            <label class="check-row"><input type="checkbox" id="edicion-aprox"> Año de edición no exacto</label>
+                            <button type="button" id="btn-investigar-fecha" class="btn-secondary">🔎 Investigar fecha (Google + Gemini)</button>
+                        </details>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="runout">Matrix / Runout</label>
@@ -347,11 +332,11 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="sid-mastering">SID mastering (CD)</label>
+                                <label for="sid-mastering">IFPI mastering (CD)</label>
                                 <input type="text" id="sid-mastering" placeholder="Ej: IFPI L046">
                             </div>
                             <div class="form-group">
-                                <label for="sid-mould">SID molde (CD)</label>
+                                <label for="sid-mould">IFPI molde (CD)</label>
                                 <input type="text" id="sid-mould" placeholder="Ej: 1554">
                             </div>
                         </div>
@@ -360,6 +345,23 @@
                         <summary class="form-section-label">Reseña personal (opcional)</summary>
                         <div class="form-group">
                             <textarea id="resena" placeholder="Tu opinión sobre el disco..."></textarea>
+                        </div>
+                    </details>
+                    <details class="form-section">
+                        <summary class="form-section-label">Precio</summary>
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label for="precio-usd">Precio (USD)</label>
+                                <input type="number" id="precio-usd" step="0.01" min="0" placeholder="Ej: 25.50" oninput="calcularPrecioArs()">
+                            </div>
+                            <div class="form-group">
+                                <label>Dólar blue compra <button type="button" onclick="fetchCotizacionBlue()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.8rem;padding:0 4px;">↻</button></label>
+                                <div id="dolar-blue-display" class="dolar-display">Cargando...</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Equivalente en ARS</label>
+                                <div id="precio-ars-display" class="dolar-display">—</div>
+                            </div>
                         </div>
                     </details>
                     <button type="submit" class="btn-primary">Agregar a mi colección</button>
@@ -432,7 +434,7 @@
         </nav>
     </div> <!-- cierra app-main -->
 
-    <script src="app.js?v=0.9.14"></script>
+    <script src="app.js?v=0.9.15"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');

@@ -1563,6 +1563,28 @@ details.form-section > summary {
     gap: 8px;
 }
 
+/* Tapa visible dentro de datos: miniatura a la izquierda, botones a la derecha */
+.tapa-inline {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.tapa-inline .tapa-preview,
+.tapa-inline .tapa-placeholder {
+    width: 110px;
+    height: 110px;
+    flex-shrink: 0;
+}
+
+.tapa-inline .tapa-placeholder p {
+    display: none;
+}
+
+.tapa-buttons-col {
+    flex-direction: column;
+}
+
 .tapa-btn {
     cursor: pointer;
     text-align: center;
