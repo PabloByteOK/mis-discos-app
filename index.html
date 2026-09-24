@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.18</title>
-    <link rel="stylesheet" href="styles.css?v=0.9.18">
+    <title>Mis Discos v0.9.19</title>
+    <link rel="stylesheet" href="styles.css?v=0.9.19">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -241,7 +241,7 @@
                             </div>
                         </div>
                     </details>
-                    <details class="form-section">
+                    <details class="form-section" id="edicion-details">
                         <summary class="form-section-label">Datos de edición (Discogs)</summary>
                         <div class="form-row">
                             <div class="form-group">
@@ -307,7 +307,7 @@
                             <summary>Precisión de fechas</summary>
                             <label class="check-row"><input type="checkbox" id="fecha-aprox"> Fecha de lanzamiento no exacta</label>
                             <label class="check-row"><input type="checkbox" id="edicion-aprox"> Año de edición no exacto</label>
-                            <button type="button" id="btn-investigar-fecha" class="btn-secondary">🔎 Investigar fecha (Google + Gemini)</button>
+                            <button type="button" id="btn-investigar-fecha" class="btn-secondary">🔎 Investigar fecha (IA)</button>
                         </details>
                         <div class="form-row">
                             <div class="form-group">
@@ -433,7 +433,7 @@
         </nav>
     </div> <!-- cierra app-main -->
 
-    <script src="app.js?v=0.9.18"></script>
+    <script src="app.js?v=0.9.19"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');

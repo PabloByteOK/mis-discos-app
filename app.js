@@ -1509,6 +1509,8 @@ function limpiarFormulario() {
     elements.tapaPreview.classList.add('hidden');
     elements.tapaPlaceholder.classList.remove('hidden');
     elements.tapaFile.value = '';
+    ['datos-details', 'edicion-details'].forEach(id =>
+        document.getElementById(id)?.classList.remove('section-glow'));
     ['search-artista', 'search-album', 'discogs-url', 'discogs-search-value',
      'artista', 'album', 'fecha'].forEach(id => {
         const el = document.getElementById(id);
@@ -1742,6 +1744,7 @@ elements.btnSearchWiki.addEventListener('click', async () => {
             elements.fecha.value = datos.fecha;
             document.getElementById('fecha-aprox').checked = false;
             verificarFechaAlerta();
+            invitarSecciones();
             ['artista', 'album', 'fecha'].forEach(id =>
                 document.getElementById(id).dispatchEvent(new Event('input', { bubbles: true })));
         } else {
@@ -1813,6 +1816,7 @@ elements.btnFetchDiscogs.addEventListener('click', async () => {
             }
             
             elements.discogsUrl.value = '';
+            invitarSecciones();
             ['artista', 'album', 'fecha', 'discogs-url', 'sello', 'genero',
              'formato-detalle', 'runout', 'catalogo', 'barcode',
              'sid-mastering', 'sid-mould'].forEach(id => {
@@ -2749,8 +2753,10 @@ function investigarEdicion(d, btn) {
     if (d.sidMould) extras.push(`SID molde ${d.sidMould}`);
     if (d.anioEdicion) extras.push(`edición ${d.anioEdicion}`);
 
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(
-        `"${d.artista}" "${d.album}" fecha lanzamiento disco${extras.length ? ' ' + extras.join(' ') : ''}`)}`, '_blank');
+    window.open(`https://www.bing.com/chat?q=${encodeURIComponent(
+        `Fecha exacta de lanzamiento del álbum "${d.album}" de ${d.artista}`
+        + (extras.length ? `. Datos de mi edición: ${extras.join('; ')}.` : '')
+        + ` Si hay varias ediciones por país, indicame a cuál corresponde y la fuente.`)}`, '_blank');
 
     const prompt = `¿Cuál es la fecha exacta de lanzamiento (día, mes y año) del álbum "${d.album}" de ${d.artista}?`
         + (extras.length ? ` Datos de mi edición: ${extras.join('; ')}.` : '')
@@ -2787,9 +2793,19 @@ function bindGlow(inputIds, btn, check) {
     update();
 }
 
+// Secciones que invitan a abrirse tras carga automática
+function invitarSecciones() {
+    ['datos-details', 'edicion-details'].forEach(id =>
+        document.getElementById(id)?.classList.add('section-glow'));
+}
+
 function initGuiaVisual() {
-    const val = id => (document.getElementById(id)?.value || '').trim();
-    bindGlow(['search-artista', 'search-album'],
+    ['datos-details', 'edicion-details'].forEach(id => {
+        document.getElementById(id)?.addEventListener('toggle', e => {
+            if (e.target.open) e.target.classList.remove('section-glow');
+        });
+    });
+    const val = id => (document.getElementById(id)?.value || '').trim();    bindGlow(['search-artista', 'search-album'],
         document.getElementById('btn-search-wiki'),
         () => val('search-artista') && val('search-album'));
     bindGlow(['discogs-url'],
