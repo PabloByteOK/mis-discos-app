@@ -1966,15 +1966,15 @@ function usarDiscogsUrl(url) {
 // ============================================
 
 document.getElementById('btn-barcode-scan')?.addEventListener('click', async () => {
-    if (!('BarcodeDetector' in window)) {
-        alert('Este navegador no soporta escaneo. Ingresá el código manualmente.');
-        return;
-    }
     const token = (document.getElementById('discogs-token').value.trim()
         || localStorage.getItem('discogs_token') || '').trim();
     if (!token) {
         alert('Pegá tu token de Discogs primero (se guarda en este navegador)');
         document.getElementById('discogs-token').focus();
+        return;
+    }
+    if (!('BarcodeDetector' in window)) {
+        escanearConZxing();
         return;
     }
 
@@ -2036,11 +2036,7 @@ document.getElementById('btn-barcode-scan')?.addEventListener('click', async () 
                 if (codes && codes.length > 0 && codes[0].rawValue) {
                     const code = codes[0].rawValue.replace(/\s/g, '');
                     closeScanner();
-                    document.querySelectorAll('.search-tab').forEach(b =>
-                        b.classList.toggle('active', b.dataset.method === 'barcode'));
-                    discogsSearchMethod = 'barcode';
-                    document.getElementById('discogs-search-value').value = code;
-                    document.getElementById('btn-discogs-search').click();
+                    usarCodigoEscaneado(code);
                     return;
                 }
             }
@@ -2049,6 +2045,108 @@ document.getElementById('btn-barcode-scan')?.addEventListener('click', async () 
     }
     scanLoop();
 });
+
+function usarCodigoEscaneado(code) {
+    document.querySelectorAll('.search-tab').forEach(b =>
+        b.classList.toggle('active', b.dataset.method === 'barcode'));
+    discogsSearchMethod = 'barcode';
+    document.getElementById('discogs-search-value').value = code;
+    document.getElementById('btn-discogs-search').click();
+}
+
+// Fallback para navegadores sin BarcodeDetector (Firefox):
+// carga perezosa de ZXing y escanea con la cámara trasera
+function cargarZxing() {
+    return new Promise((resolve, reject) => {
+        if (window.ZXingBrowser && window.ZXingBrowser.BrowserMultiFormatReader) {
+            resolve();
+            return;
+        }
+        const s = document.createElement('script');
+        s.src = './zxing-browser.min.js';
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('No se pudo cargar el lector'));
+        document.head.appendChild(s);
+    });
+}
+
+async function escanearConZxing() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="webcam-modal">
+            <div class="modal-header">
+                <h3>Escanear código</h3>
+                <button class="modal-close" id="scan-close">&times;</button>
+            </div>
+            <div class="webcam-video-container scan-frame">
+                <video id="scan-video" playsinline muted></video>
+            </div>
+            <p class="search-hint" style="text-align:center">Apuntá al código de barras (modo compatible)</p>
+            <button class="webcam-switch-btn" id="scan-cancel">Cancelar</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const video = modal.querySelector('#scan-video');
+    let reader = null;
+    let cerrado = false;
+
+    function cerrar() {
+        cerrado = true;
+        try {
+            if (reader && typeof reader.reset === 'function') reader.reset();
+        } catch (e) {}
+        try {
+            const stream = video.srcObject;
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        modal.remove();
+    }
+    modal.querySelector('#scan-close').addEventListener('click', cerrar);
+    modal.querySelector('#scan-cancel').addEventListener('click', cerrar);
+
+    try {
+        await cargarZxing();
+    } catch (e) {
+        console.error(e);
+        modal.querySelector('.webcam-video-container').innerHTML =
+            '<div class="webcam-error">No se pudo cargar el lector.<br>Ingresá el código manualmente.</div>';
+        return;
+    }
+
+    // Pedir permiso primero para poder elegir la cámara trasera por nombre
+    try {
+        const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        tmp.getTracks().forEach(t => t.stop());
+    } catch (e) { /* seguimos igual, el lector pide permiso */ }
+
+    let deviceId = null;
+    try {
+        const devices = await window.ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
+        const trasera = devices.find(d => /back|rear|trasera|environment/i.test(d.label || ''));
+        deviceId = (trasera || devices[0])?.deviceId || null;
+    } catch (e) { /* usar default */ }
+
+    try {
+        reader = new window.ZXingBrowser.BrowserMultiFormatReader();
+        reader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+            if (cerrado) return;
+            if (result && typeof result.getText === 'function') {
+                const code = (result.getText() || '').replace(/\s/g, '');
+                if (code) {
+                    cerrar();
+                    usarCodigoEscaneado(code);
+                }
+            }
+            // los errores por frame (NotFound) se ignoran y sigue escaneando
+        });
+    } catch (e) {
+        console.error('Error scanner ZXing:', e);
+        modal.querySelector('.webcam-video-container').innerHTML =
+            '<div class="webcam-error">No se pudo iniciar la cámara.</div>';
+    }
+}
 
 // Precargar token guardado al iniciar (se muestra vacío por seguridad,
 // pero se usa el guardado si el campo está vacío)
