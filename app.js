@@ -309,11 +309,12 @@ function getAnniversaryYear(fechaLanzamiento) {
     if (!fechaLanzamiento) return '?';
     
     const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
     const fecha = parseDate(fechaLanzamiento);
     let anniversaryYear = hoy.getFullYear();
     
     const proximo = new Date(anniversaryYear, fecha.getMonth(), fecha.getDate());
-    if (proximo < new Date()) {
+    if (proximo < hoy) {
         anniversaryYear++;
     }
     
