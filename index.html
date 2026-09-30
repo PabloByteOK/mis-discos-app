@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.23</title>
-    <link rel="stylesheet" href="styles.css?v=0.9.23">
+    <title>Mis Discos v0.9.24</title>
+    <link rel="stylesheet" href="styles.css?v=0.9.24">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -257,9 +257,23 @@
                                     <option value="otro">Otro</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group">
                                 <label for="formato-detalle">Ejemplares / Detalle</label>
                                 <input type="text" id="formato-detalle" placeholder="2 x Vinyl, LP">
+                            </div>
+                            <div class="form-group">
+                                <label for="estado-tapa">Tapa</label>
+                                <select id="estado-tapa">
+                                    <option value="">Sin calificar</option>
+                                    <option value="M">M - Mint</option>
+                                    <option value="NM">NM - Near Mint</option>
+                                    <option value="EX">EX - Excelente</option>
+                                    <option value="VG">VG - Buen estado</option>
+                                    <option value="G">G - Desgaste</option>
+                                    <option value="F">F - Muy deteriorada</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-row">
@@ -284,18 +298,6 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="estado-tapa">Tapa</label>
-                                <select id="estado-tapa">
-                                    <option value="">Sin calificar</option>
-                                    <option value="M">M - Mint</option>
-                                    <option value="NM">NM - Near Mint</option>
-                                    <option value="EX">EX - Excelente</option>
-                                    <option value="VG">VG - Buen estado</option>
-                                    <option value="G">G - Desgaste</option>
-                                    <option value="F">F - Muy deteriorada</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
                                 <label for="tiene-insert">¿Tiene insert?</label>
                                 <select id="tiene-insert">
                                     <option value="no">No</option>
@@ -303,7 +305,7 @@
                                 </select>
                             </div>
                         </div>
-                        <details class="precision-box">
+                        <details class="precision-box" open>
                             <summary>Precisión de fechas</summary>
                             <label class="check-row"><input type="checkbox" id="fecha-aprox"> Fecha de lanzamiento no exacta</label>
                             <label class="check-row"><input type="checkbox" id="edicion-aprox"> Año de edición no exacto</label>
@@ -433,7 +435,7 @@
         </nav>
     </div> <!-- cierra app-main -->
 
-    <script src="app.js?v=0.9.23"></script>
+    <script src="app.js?v=0.9.24"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');
