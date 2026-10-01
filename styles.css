@@ -941,8 +941,7 @@ button#btn-fetch-discogs:hover {
 }
 
 .disco-delete-btn {
-    background: none;
-    border: none;
+    background: none;    border: none;
     color: var(--text-secondary);
     font-size: 0.7rem;
     cursor: pointer;
@@ -961,6 +960,29 @@ button#btn-fetch-discogs:hover {
     flex: 1;
     min-width: 0;
     overflow: hidden;
+}
+
+.disco-precio {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.precio-usd {
+    color: #f1c40f;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.precio-ars {
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    white-space: nowrap;
 }
 
 .disco-title-row {

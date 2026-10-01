@@ -1007,6 +1007,16 @@ function renderAniversarios() {
     }).join('');
 }
 
+function precioColumna(disco) {
+    const usd = parseFloat(disco.precioUsd);
+    if (!usd) return '';
+    const blue = parseFloat(disco.cotizacionBlue) || cotizacionBlue;
+    const ars = blue ? `<span class="precio-ars">$${Math.round(usd * blue).toLocaleString('es-AR')} ARS</span>` : '';
+    return `<div class="disco-precio">
+        <span class="precio-usd">$${usd.toLocaleString('es-AR', { minimumFractionDigits: 2 })} USD</span>${ars}
+    </div>`;
+}
+
 function renderColeccion(filtro) {
     if (filtro) currentFilter = filtro;
     let discosFiltrados = [...discos];
@@ -1019,6 +1029,11 @@ function renderColeccion(filtro) {
         if (vinilos) parts.push(`${vinilos} vinilo${vinilos !== 1 ? 's' : ''}`);
         if (cds) parts.push(`${cds} CD${cds !== 1 ? 's' : ''}`);
         countEl.textContent = parts.join(' · ');
+    }
+    const ventaBtn = document.querySelector('.filter-btn[data-filter="venta"]');
+    if (ventaBtn) {
+        const n = discos.filter(d => d.enVenta).length;
+        ventaBtn.textContent = n ? `En venta (${n})` : 'En venta';
     }
 
     if (currentFilter === 'venta') {
@@ -1080,7 +1095,6 @@ function renderColeccion(filtro) {
                     <div class="artista">${titleCase(disco.artista)}</div>
                     <div class="fecha">${parts.join(' · ')}</div>
                     <div class="disco-badges">
-                        ${disco.precioUsd ? `<span class="precio-badge">$${parseFloat(disco.precioUsd).toLocaleString('es-AR', {minimumFractionDigits: 2})} USD</span>` : ''}
                         ${disco.estadoTapa ? `<span class="mini-badge tapa-badge">Tapa: ${disco.estadoTapa}</span>` : ''}
                         ${disco.estado ? `<span class="mini-badge estado-badge ${getEstadoClass(disco.estado)}">${disco.estado}</span>` : ''}
                         ${disco.tieneInsert === 'si' ? '<span class="mini-badge insert-badge">INS</span>' : ''}
@@ -1088,6 +1102,7 @@ function renderColeccion(filtro) {
                         ${disco.catalogo ? `<span class="mini-badge cat-badge">${disco.catalogo}</span>` : ''}
                     </div>
                 </div>
+                ${precioColumna(disco)}
                 <button class="disco-delete-btn" onclick="event.stopPropagation(); eliminarDisco('${disco.id}')" title="Eliminar">✕</button>
             </div>
         `;
