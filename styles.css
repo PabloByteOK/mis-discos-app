@@ -715,6 +715,14 @@ details.section-glow > summary {
         height: 44px;
     }
 
+    .precio-usd {
+        font-size: 0.7rem;
+    }
+
+    .precio-ars {
+        font-size: 0.65rem;
+    }
+
     .disco-title-row h3 {
         font-size: 0.8rem;
     }

@@ -2633,7 +2633,7 @@ function mergeDiscos(local, gist) {
         if (!existing) {
             merged.push(d);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'enVenta']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;
