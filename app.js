@@ -1021,7 +1021,9 @@ function renderColeccion(filtro) {
         countEl.textContent = parts.join(' · ');
     }
 
-    if (currentFilter !== 'todos') {
+    if (currentFilter === 'venta') {
+        discosFiltrados = discosFiltrados.filter(d => d.enVenta);
+    } else if (currentFilter !== 'todos') {
         discosFiltrados = discosFiltrados.filter(d => d.formato === currentFilter);
     }
 
@@ -1082,6 +1084,7 @@ function renderColeccion(filtro) {
                         ${disco.estadoTapa ? `<span class="mini-badge tapa-badge">Tapa: ${disco.estadoTapa}</span>` : ''}
                         ${disco.estado ? `<span class="mini-badge estado-badge ${getEstadoClass(disco.estado)}">${disco.estado}</span>` : ''}
                         ${disco.tieneInsert === 'si' ? '<span class="mini-badge insert-badge">INS</span>' : ''}
+                        ${disco.enVenta ? '<span class="mini-badge venta-badge">EN VENTA</span>' : ''}
                         ${disco.catalogo ? `<span class="mini-badge cat-badge">${disco.catalogo}</span>` : ''}
                     </div>
                 </div>
@@ -1240,6 +1243,9 @@ function editarDisco(id) {
                             <option value="si" ${disco.tieneInsert === 'si' ? 'selected' : ''}>Sí</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label class="check-row"><input type="checkbox" id="edit-en-venta" ${disco.enVenta ? 'checked' : ''}> En venta</label>
                 </div>
                 <div class="form-group">
                     <label>Notas / Dato curioso</label>
@@ -1449,6 +1455,7 @@ function editarDisco(id) {
         disco.estado = modal.querySelector('#edit-estado').value;
         disco.estadoTapa = modal.querySelector('#edit-estado-tapa').value;
         disco.tieneInsert = modal.querySelector('#edit-tiene-insert').value;
+        disco.enVenta = modal.querySelector('#edit-en-venta').checked;
         disco.runout = modal.querySelector('#edit-runout').value.trim();
         disco.catalogo = modal.querySelector('#edit-catalogo').value.trim();
         disco.barcode = modal.querySelector('#edit-barcode').value.trim();
@@ -2611,7 +2618,7 @@ function mergeDiscos(local, gist) {
         if (!existing) {
             merged.push(d);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'enVenta']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;

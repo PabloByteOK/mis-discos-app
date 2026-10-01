@@ -1108,6 +1108,12 @@ button#btn-fetch-discogs:hover {
     border: 1px solid rgba(155, 89, 182, 0.3);
 }
 
+.venta-badge {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.4);
+}
+
 .estado-tapa-m { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); }
 .estado-tapa-nm { background: rgba(52, 152, 219, 0.1); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.2); }
 .estado-tapa-ex { background: rgba(155, 89, 182, 0.1); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.2); }

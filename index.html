@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.24</title>
-    <link rel="stylesheet" href="styles.css?v=0.9.24">
+    <title>Mis Discos v0.9.25</title>
+    <link rel="stylesheet" href="styles.css?v=0.9.25">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -401,6 +401,7 @@
                     <button class="filter-btn active" data-filter="todos">Todos</button>
                     <button class="filter-btn" data-filter="vinilo">Vinilos</button>
                     <button class="filter-btn" data-filter="cd">CDs</button>
+                    <button class="filter-btn" data-filter="venta">En venta</button>
                 </div>
                 <div class="backup-buttons">
                     <button id="btn-export-json" class="btn-secondary">JSON</button>
@@ -435,7 +436,7 @@
         </nav>
     </div> <!-- cierra app-main -->
 
-    <script src="app.js?v=0.9.24"></script>
+    <script src="app.js?v=0.9.25"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');
