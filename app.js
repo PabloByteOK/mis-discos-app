@@ -2632,6 +2632,7 @@ function mergeDiscos(local, gist) {
         const existing = byKey.get(key);
         if (!existing) {
             merged.push(d);
+            byKey.set(key, d);
         } else {
             for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
