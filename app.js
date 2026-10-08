@@ -2627,12 +2627,15 @@ function addDeletedId(id) {
 function mergeDiscos(local, gist) {
     const merged = [...local];
     const byKey = new Map(local.map(d => [`${d.artista}|${d.album}|${d.formato || ''}`.toLowerCase(), d]));
+    const seenIds = new Set(local.map(d => d.id));
     for (const d of gist) {
+        if (d.id && seenIds.has(d.id)) continue;
         const key = `${d.artista}|${d.album}|${d.formato || ''}`.toLowerCase();
         const existing = byKey.get(key);
         if (!existing) {
             merged.push(d);
             byKey.set(key, d);
+            if (d.id) seenIds.add(d.id);
         } else {
             for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
@@ -2684,7 +2687,15 @@ async function syncFromGist() {
         // Paso 2: Mezclar local + gist (no pierde nada)
         // Usar `discos` en memoria (tiene tapas) como fuente local,
         // no localStorage (que guarda sin tapas por IndexedDB).
-        const merged = mergeDiscos(discos, gistDiscos);
+        let merged = mergeDiscos(discos, gistDiscos);
+        // Sanear: un solo registro por ID (vale el primero) y fuera eliminados
+        const vistos = new Set();
+        merged = merged.filter(d => {
+            if (!d.id) return true;
+            if (eliminados.includes(d.id) || vistos.has(d.id)) return false;
+            vistos.add(d.id);
+            return true;
+        });
         // Recuperar tapas de IndexedDB para discos venidos del Gist
         for (const d of merged) {
             if (!d.tapa) {
