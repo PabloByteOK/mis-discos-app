@@ -926,6 +926,17 @@ button#btn-fetch-discogs:hover {
     background: var(--bg-hover);
 }
 
+.disco-duplicado-resaltado {
+    outline: 2px solid #e6b800;
+    background: rgba(230, 184, 0, 0.12);
+    animation: resaltadoPulso 1s ease 3;
+}
+
+@keyframes resaltadoPulso {
+    0%, 100% { outline-color: #e6b800; }
+    50% { outline-color: transparent; }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
