@@ -1085,7 +1085,7 @@ function renderColeccion(filtro) {
         if (disco.formatoDetalle) parts.push(disco.formatoDetalle);
 
         return `
-            <div class="disco-card" onclick="editarDisco('${disco.id}')">
+            <div class="disco-card" data-id="${disco.id}" onclick="editarDisco('${disco.id}')">
                 ${disco.tapa ? `<img class="disco-tapa-mini" src="${disco.tapa}" alt="Tapa" loading="lazy">` : '<div class="disco-tapa-mini disco-tapa-placeholder">🎵</div>'}
                 <div class="disco-info">
                     <div class="disco-title-row">
@@ -1121,7 +1121,35 @@ function renderAll() {
 function agregarDisco(disco) {
     // Verificar si ya existe
     if (discoExiste(disco.album, disco.artista, disco.formato)) {
-        alert(`"${disco.album}" de ${disco.artista} en formato ${disco.formato} ya está en tu colección.`);
+        const existente = discos.find(d =>
+            d.album.toLowerCase() === disco.album.toLowerCase() &&
+            d.artista.toLowerCase() === disco.artista.toLowerCase() &&
+            (d.formato || '').toLowerCase() === (disco.formato || '').toLowerCase()
+        );
+        alert(`"${disco.album}" de ${disco.artista} en formato ${disco.formato} ya está en tu colección.\n\nSe abre la colección mostrando ese disco.`);
+        // Mostrar el disco: limpiar filtro y búsqueda que pueden ocultarlo
+        currentSearch = '';
+        const searchEl = document.getElementById('buscar-coleccion');
+        if (searchEl) searchEl.value = '';
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        const todosBtn = document.querySelector('.filter-btn[data-filter="todos"]');
+        if (todosBtn) todosBtn.classList.add('active');
+        currentFilter = 'todos';
+        currentSort = 'banda';
+        document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === 'banda'));
+        renderColeccion();
+        navegarA('screen-coleccion');
+        // Resaltar la tarjeta unos segundos
+        if (existente) {
+            setTimeout(() => {
+                const card = document.querySelector(`.disco-card[data-id="${existente.id}"]`);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('disco-duplicado-resaltado');
+                    setTimeout(() => card.classList.remove('disco-duplicado-resaltado'), 4000);
+                }
+            }, 100);
+        }
         return false;
     }
     
