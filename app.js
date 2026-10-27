@@ -850,8 +850,10 @@ async function buscarEnDiscogs(url) {
         
         // Obtener tapa de Discogs (imagen primaria)
         let tapaDiscogs = null;
+        let tapaUrlDiscogs = null;
         if (data.images && data.images.length > 0) {
             const imgPrincipal = data.images.find(img => img.type === 'primary') || data.images[0];
+            tapaUrlDiscogs = imgPrincipal.uri;
             tapaDiscogs = await descargarTapa(imgPrincipal.uri);
         }
         
@@ -905,6 +907,7 @@ async function buscarEnDiscogs(url) {
             notas: discogsNotes || '',
             discogsUrl: url,
             discogsId: info.id,
+            tapaUrl: tapaUrlDiscogs || '',
             tapa: tapaDiscogs || ''
         };
         
@@ -1287,8 +1290,13 @@ function editarDisco(id) {
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="check-row"><input type="checkbox" id="edit-en-venta" ${disco.enVenta ? 'checked' : ''}> En venta</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="check-row"><input type="checkbox" id="edit-en-venta" ${disco.enVenta ? 'checked' : ''}> En venta</label>
+                    </div>
+                    <div class="form-group">
+                        <label class="check-row"><input type="checkbox" id="edit-cat-visible" ${disco.catOculto ? '' : 'checked'}> Visible en catálogo</label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Notas / Dato curioso</label>
@@ -1462,6 +1470,7 @@ function editarDisco(id) {
                 }
                 if (data.images && data.images.length > 0) {
                     const img = data.images.find(i => i.type === 'primary') || data.images[0];
+                    disco.tapaUrl = img.uri;
                     const tapaUrl = await descargarTapa(img.uri);
                     if (tapaUrl) {
                         editTapaUrl = tapaUrl;
@@ -1499,6 +1508,7 @@ function editarDisco(id) {
         disco.estadoTapa = modal.querySelector('#edit-estado-tapa').value;
         disco.tieneInsert = modal.querySelector('#edit-tiene-insert').value;
         disco.enVenta = modal.querySelector('#edit-en-venta').checked;
+        disco.catOculto = !modal.querySelector('#edit-cat-visible').checked;
         disco.runout = modal.querySelector('#edit-runout').value.trim();
         disco.catalogo = modal.querySelector('#edit-catalogo').value.trim();
         disco.barcode = modal.querySelector('#edit-barcode').value.trim();
@@ -2665,7 +2675,7 @@ function mergeDiscos(local, gist) {
             byKey.set(key, d);
             if (d.id) seenIds.add(d.id);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'tapaUrl', 'catOculto', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;
@@ -2799,6 +2809,7 @@ async function syncFromGist() {
                         }
                         if (data.images && data.images.length > 0) {
                             const img = data.images.find(img => img.type === 'primary') || data.images[0];
+                            d.tapaUrl = img.uri;
                             const tapaUrl = await descargarTapa(img.uri);
                             if (tapaUrl) {
                                 d.tapa = tapaUrl;
@@ -2910,6 +2921,238 @@ document.querySelectorAll('.modal-close').forEach(btn => {
         document.getElementById(modalId)?.classList.add('hidden');
     });
 });
+
+// ============================================
+// CATÁLOGO PÚBLICO (Gist público + catalogo.html)
+// ============================================
+// El catálogo es una página aparte (catalogo.html) que solo lee un Gist
+// PÚBLICO con datos mínimos. Nunca usa tu Gist privado ni expone token.
+
+const CAT_GIST_KEY = 'catalogo_gist_id';
+const CAT_IG_KEY = 'catalogo_instagram';
+const CAT_INSTAGRAM_DEFAULT = '_pablobyte';
+
+function getCatalogConfig() {
+    return {
+        gistId: localStorage.getItem(CAT_GIST_KEY) || '',
+        instagram: localStorage.getItem(CAT_IG_KEY) || CAT_INSTAGRAM_DEFAULT
+    };
+}
+
+function updateCatalogStatus(msg, type) {
+    const el = document.getElementById('catalog-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'sync-status ' + (type || '');
+}
+
+function updateCatalogUI() {
+    const { gistId } = getCatalogConfig();
+    const publicarBtn = document.getElementById('btn-catalog-publish');
+    const ocultarBtn = document.getElementById('btn-catalog-hide');
+    const igInput = document.getElementById('catalog-instagram');
+    if (igInput && !igInput.value.trim()) igInput.value = getCatalogConfig().instagram;
+    if (publicarBtn) publicarBtn.textContent = gistId ? '📢 Actualizar catálogo' : '📢 Publicar catálogo';
+    if (ocultarBtn) ocultarBtn.classList.toggle('hidden', !gistId);
+}
+
+// Armado del JSON público: SOLO lo que querés mostrar.
+// - reseña personal NUNCA se publica
+// - notas (dato curioso de Discogs) sí, son públicas de origen
+// - estado/estadoTapa/insert solo si está en venta
+// - tapa: URL de Discogs vía proxy (nada de base64, nada de espacio)
+function construirCatalogoJSON() {
+    const { instagram } = getCatalogConfig();
+    const hoy = Date.now();
+    const discosPublicos = discos
+        .filter(d => !d.catOculto)
+        .map(d => {
+            const anio = d.fecha ? d.fecha.split('-')[0] : '';
+            let tapa = null;
+            if (d.tapaUrl) {
+                tapa = `https://images.weserv.nl/?url=${encodeURIComponent(d.tapaUrl)}&w=480&h=480&fit=contain&output=webp&q=80`;
+            } else if (d.tapa && d.tapa.startsWith('http')) {
+                tapa = `https://images.weserv.nl/?url=${encodeURIComponent(d.tapa)}&w=480&h=480&fit=contain&output=webp&q=80`;
+            }
+            const obj = {
+                artista: d.artista || '',
+                album: d.album || '',
+                formato: d.formato || '',
+                formatoDetalle: d.formatoDetalle || '',
+                anio,
+                fecha: d.fecha || '',
+                anioEdicion: d.anioEdicion || '',
+                sello: d.sello || '',
+                genero: d.genero || '',
+                catalogo: d.catalogo || '',
+                runout: d.runout || '',
+                barcode: d.barcode || '',
+                sidMastering: d.sidMastering || '',
+                sidMould: d.sidMould || '',
+                notas: d.notas || '',
+                discogsUrl: d.discogsUrl || '',
+                tapa
+            };
+            if (d.enVenta) {
+                obj.enVenta = true;
+                obj.precioUsd = d.precioUsd || '';
+                obj.cotizacionBlue = d.cotizacionBlue || '';
+                obj.precioArs = (d.precioUsd && d.cotizacionBlue) ? Math.round(d.precioUsd * d.cotizacionBlue) : '';
+                obj.estado = d.estado || '';
+                obj.estadoTapa = d.estadoTapa || '';
+                obj.tieneInsert = d.tieneInsert || '';
+            }
+            if (d.fechaAgregado && (hoy - new Date(d.fechaAgregado).getTime()) < 30 * 24 * 3600 * 1000) {
+                obj.nuevo = true;
+            }
+            obj.fechaAgregado = d.fechaAgregado || '';
+            return obj;
+        });
+    return JSON.stringify({
+        version: 1,
+        instagram,
+        actualizado: new Date().toISOString(),
+        total: discosPublicos.length,
+        discos: discosPublicos
+    }, null, 1);
+}
+
+// Completa tapaUrl faltante consultando Discogs (una sola vez por disco).
+// Solo discos con discogsUrl y sin tapaUrl: los siguientes publicados ya son rápidos.
+async function completarTapaUrls(faltantes) {
+    const dToken = localStorage.getItem('discogs_token') || '';
+    const dAuth = dToken ? `?token=${dToken}` : '';
+    let ok = 0;
+    for (let i = 0; i < faltantes.length; i++) {
+        const d = faltantes[i];
+        try {
+            const info = extraerIdDiscogs(d.discogsUrl);
+            if (!info) continue;
+            const typePath = info.tipo === 'master' ? 'masters' : 'releases';
+            const resp = await fetch(`https://api.discogs.com/${typePath}/${info.id}${dAuth}`, {
+                headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+            });
+            if (resp.status === 429) { await esperar(5000); i--; continue; }
+            if (!resp.ok) continue;
+            let data = await resp.json();
+            if ((!data.images || data.images.length === 0) && data.master_id) {
+                const mResp = await fetch(`https://api.discogs.com/masters/${data.master_id}${dAuth}`, {
+                    headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+                });
+                if (mResp.ok) data = await mResp.json();
+            }
+            if (data.images && data.images.length > 0) {
+                const img = data.images.find(x => x.type === 'primary') || data.images[0];
+                d.tapaUrl = img.uri;
+                guardarDiscos();
+                ok++;
+            }
+        } catch (e) { /* un disco menos, no rompe */ }
+        if (i < faltantes.length - 1) await esperar(1200);
+    }
+    return ok;
+}
+
+async function publicarCatalogo() {
+    const { token } = getSyncConfig();
+    if (!token) {
+        updateCatalogStatus('Configurá primero el token en Sync', 'error');
+        return;
+    }
+    const igInput = document.getElementById('catalog-instagram');
+    if (igInput && igInput.value.trim()) {
+        localStorage.setItem(CAT_IG_KEY, igInput.value.trim().replace(/^@/, ''));
+    }
+
+    const btn = document.getElementById('btn-catalog-publish');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Publicando...'; }
+    updateCatalogStatus('Buscando tapas faltantes...', 'ok');
+
+    try {
+        // 1) Completar tapaUrl de los discos que no la tengan (solo una vez cada uno)
+        const sinUrl = discos.filter(d => !d.catOculto && !d.tapaUrl && d.discogsUrl);
+        if (sinUrl.length > 0) {
+            updateCatalogStatus(`Completando ${sinUrl.length} tapas desde Discogs (puede tardar)...`, 'ok');
+            await completarTapaUrls(sinUrl);
+        }
+
+        // 2) Armar JSON público
+        const payload = construirCatalogoJSON();
+
+        // 3) Crear o actualizar el Gist público
+        const { gistId } = getCatalogConfig();
+        let resp;
+        if (gistId) {
+            resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: { 'catalogo.json': { content: payload } } })
+            });
+        } else {
+            resp = await fetch('https://api.github.com/gists', {
+                method: 'POST',
+                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    description: 'Catálogo público de discos',
+                    public: true,
+                    files: { 'catalogo.json': { content: payload } }
+                })
+            });
+        }
+        if (!resp.ok) throw new Error(`GitHub ${resp.status}`);
+        const data = await resp.json();
+        localStorage.setItem(CAT_GIST_KEY, data.id);
+
+        updateCatalogStatus(`✅ Catálogo publicado (${construirConteo()} discos visibles)`, 'ok');
+        updateCatalogUI();
+        const link = document.getElementById('catalog-link');
+        if (link) {
+            link.href = 'https://pablobyteok.github.io/mis-discos-app/catalogo.html';
+            link.classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error('Error publicando catálogo:', err);
+        updateCatalogStatus('Error: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; updateCatalogUI(); }
+    }
+}
+
+function construirConteo() {
+    return discos.filter(d => !d.catOculto).length;
+}
+
+async function ocultarCatalogo() {
+    const { gistId } = getCatalogConfig();
+    if (!gistId) return;
+    if (!confirm('¿Ocultar el catálogo? Nadie podrá verlo hasta que lo publiques de nuevo.')) return;
+    const { token } = getSyncConfig();
+    const btn = document.getElementById('btn-catalog-hide');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Ocultando...'; }
+    try {
+        const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `token ${token}` }
+        });
+        if (!resp.ok && resp.status !== 404) throw new Error(`GitHub ${resp.status}`);
+        localStorage.removeItem(CAT_GIST_KEY);
+        updateCatalogStatus('🙈 Catálogo oculto — nadie puede verlo', 'ok');
+        updateCatalogUI();
+    } catch (err) {
+        console.error('Error ocultando catálogo:', err);
+        updateCatalogStatus('Error: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; updateCatalogUI(); }
+    }
+}
+
+document.getElementById('btn-catalog')?.addEventListener('click', () => {
+    document.getElementById('modal-catalog').classList.remove('hidden');
+    updateCatalogUI();
+    updateCatalogStatus('');
+});
+document.getElementById('btn-catalog-publish')?.addEventListener('click', publicarCatalogo);
+document.getElementById('btn-catalog-hide')?.addEventListener('click', ocultarCatalogo);
 
 function investigarEdicion(d, btn) {
     if (!d.artista || !d.album) {

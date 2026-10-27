@@ -1863,6 +1863,12 @@ details.form-section > summary {
     align-items: center;
 }
 
+.header-btns {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
 .header-btn {
     background: none;
     border: none;

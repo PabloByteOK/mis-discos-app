@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mis Discos — Catálogo</title>
+    <meta name="description" content="Catálogo público de colección de discos: vinilos, CDs y más.">
+    <meta name="theme-color" content="#1c1c20">
+    <style>
+        :root {
+            --bg: #121216;
+            --bg-card: #1c1c20;
+            --bg-hover: #26262c;
+            --border: #2e2e36;
+            --text: #e8e8ec;
+            --text-dim: #9a9aa6;
+            --accent: #e6b800;
+            --venta: #4caf50;
+            --nuevo: #2196f3;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .hidden { display: none !important; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+        .cat-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 16px 10px;
+        }
+        .cat-header h1 { font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .cat-header .sub { color: var(--text-dim); font-size: 0.8rem; margin-top: 2px; }
+        .controles { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        #buscar {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+        }
+        #buscar:focus { border-color: var(--accent); }
+        .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .chip {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .chip.active { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 600; }
+        #orden { margin-left: auto; background: var(--bg); border: 1px solid var(--border); color: var(--text-dim); border-radius: 999px; padding: 6px 8px; font-size: 0.75rem; outline: none; }
+        .seccion-titulo { padding: 16px 16px 8px; font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .recientes-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 0 16px 6px; scrollbar-width: thin; }
+        .reciente-card { flex: 0 0 110px; cursor: pointer; text-align: center; }
+        .reciente-card img, .reciente-card .ph {
+            width: 110px; height: 110px; object-fit: cover; border-radius: 10px;
+            background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 2rem;
+        }
+        .reciente-card .rc-tit { font-size: 0.72rem; margin-top: 5px; color: var(--text-dim); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 12px; padding: 10px 16px; }
+        .card { cursor: pointer; position: relative; }
+        .card .tapaco { position: relative; }
+        .card img, .card .ph {
+            width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px;
+            background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 2.4rem;
+        }
+        .badge-nuevo {
+            position: absolute; top: 6px; left: 6px; background: var(--nuevo); color: #fff;
+            font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
+        }
+        .badge-venta {
+            position: absolute; top: 6px; right: 6px; background: var(--venta); color: #fff;
+            font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
+        }
+        .card .c-tit { font-size: 0.78rem; font-weight: 600; margin-top: 6px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .card .c-sub { font-size: 0.68rem; color: var(--text-dim); margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .vacio { text-align: center; color: var(--text-dim); padding: 60px 20px; }
+        .vacio .icono { font-size: 3rem; margin-bottom: 10px; }
+        /* Modal ficha */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 50;
+            display: flex; align-items: flex-end; justify-content: center;
+        }
+        .overlay.hidden { display: none; }
+        .ficha {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px 18px 0 0;
+            width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 18px 18px 28px;
+        }
+        @media (min-width: 600px) { .overlay { align-items: center; } .ficha { border-radius: 18px; } }
+        .ficha-top { display: flex; gap: 14px; }
+        .ficha-top img, .ficha-top .ph {
+            width: 130px; height: 130px; object-fit: cover; border-radius: 12px; flex-shrink: 0;
+            background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 2.6rem;
+        }
+        .ficha h2 { font-size: 1.05rem; line-height: 1.3; }
+        .ficha .f-art { color: var(--accent); font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+        .f-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .f-badge { font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--bg-hover); color: var(--text-dim); text-transform: uppercase; }
+        .f-badge.venta { background: var(--venta); color: #fff; }
+        .f-badge.fmt { background: #3d2f00; color: var(--accent); }
+        .ficha-rows { margin-top: 14px; border-top: 1px solid var(--border); }
+        .f-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+        .f-row .k { color: var(--text-dim); flex-shrink: 0; }
+        .f-row .v { text-align: right; word-break: break-word; }
+        .f-precio { margin-top: 14px; background: var(--bg); border: 1px solid var(--venta); border-radius: 12px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .f-precio .lbl { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; }
+        .f-precio .usd { font-size: 1.2rem; font-weight: 700; color: var(--venta); }
+        .f-precio .ars { font-size: 0.8rem; color: var(--text-dim); }
+        .f-notas { margin-top: 12px; font-size: 0.8rem; color: var(--text-dim); font-style: italic; line-height: 1.45; }
+        .f-acciones { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-consultar {
+            flex: 1; min-width: 200px; background: var(--accent); color: #111; border: none;
+            padding: 13px 16px; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+            transition: filter 0.15s;
+        }
+        .btn-consultar:hover { filter: brightness(1.1); }
+        .btn-discogs {
+            background: var(--bg); border: 1px solid var(--border); color: var(--text-dim);
+            padding: 13px 16px; border-radius: 12px; font-size: 0.85rem; text-decoration: none;
+        }
+        .btn-cerrar {
+            position: absolute; top: 10px; right: 12px; background: var(--bg-hover); border: none; color: var(--text);
+            width: 34px; height: 34px; border-radius: 50%; font-size: 1.1rem; cursor: pointer;
+        }
+        .ficha { position: relative; }
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--venta); color: #fff; padding: 10px 18px; border-radius: 999px;
+            font-size: 0.85rem; font-weight: 600; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        .pie { text-align: center; color: var(--text-dim); font-size: 0.7rem; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <header class="cat-header">
+        <h1>🎵 Mis Discos</h1>
+        <div class="sub" id="subtitulo">Cargando catálogo...</div>
+        <div class="controles" id="controles" style="display:none">
+            <input type="search" id="buscar" placeholder="Buscar artista o álbum...">
+            <div class="chips">
+                <button class="chip active" data-f="todos">Todos</button>
+                <button class="chip" data-f="vinilo">Vinilos</button>
+                <button class="chip" data-f="cd">CDs</button>
+                <button class="chip" data-f="venta">En venta</button>
+                <select id="orden">
+                    <option value="reciente">Más recientes</option>
+                    <option value="az">A — Z</option>
+                    <option value="anio">Año</option>
+                    <option value="precio">Precio ↑</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <section id="recientes-seccion" style="display:none">
+        <div class="seccion-titulo">✨ Agregados recientemente</div>
+        <div class="recientes-scroll" id="recientes"></div>
+    </section>
+
+    <main>
+        <div class="grid" id="grid"></div>
+        <div class="vacio hidden" id="vacio">
+            <div class="icono">🔍</div>
+            <p>No se encontraron discos</p>
+        </div>
+        <div class="vacio hidden" id="oculto-mensaje">
+            <div class="icono">🙈</div>
+            <p>El catálogo no está disponible por el momento.</p>
+        </div>
+    </main>
+
+    <div class="overlay hidden" id="overlay">
+        <div class="ficha" id="ficha"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="pie">Catálogo de colección personal · No es una tienda online</div>
+
+    <script>
+        const GITHUB_USER = 'PabloByteOK';
+        const ESTADOS = {
+            'M': 'Mint', 'NM': 'Near Mint', 'NM-': 'Near Mint Minus', 'EX+': 'Excellent Plus',
+            'EX': 'Excellent', 'EX-': 'Excellent Minus', 'VG+': 'Very Good Plus',
+            'VG': 'Very Good', 'VG-': 'Very Good Minus', 'G+': 'Good Plus',
+            'G': 'Good', 'G-': 'Good Minus', 'F': 'Fair', 'P': 'Poor', 'X': 'Junk'
+        };
+        const FORMATOS = { vinilo: 'Vinilo', cd: 'CD', cassette: 'Cassette', otro: 'Otro' };
+
+        let catalogo = { discos: [], instagram: '' };
+        let filtro = 'todos';
+        let busqueda = '';
+        let orden = 'reciente';
+
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const titleCase = str => {
+            if (!str) return '';
+            const arts = ['de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'y', 'o', 'a', 'al', 'con', 'por', 'para', 'en', 'the', 'a', 'an', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'of', 'with'];
+            return str.toLowerCase().split(' ').map((w, i) =>
+                (i === 0 || !arts.includes(w)) ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
+        };
+        const estadoLargo = c => c ? (ESTADOS[c] ? c + ' — ' + ESTADOS[c] : c) : '';
+
+        async function cargarCatalogo() {
+            try {
+                // Buscar el Gist público que contiene catalogo.json
+                const resp = await fetch(`https://api.github.com/users/${GITHUB_USER}/gists?per_page=100`);
+                if (!resp.ok) throw new Error('GitHub ' + resp.status);
+                const gists = await resp.json();
+                const catGist = gists.find(g => g.files && g.files['catalogo.json']);
+                if (!catGist) {
+                    $('subtitulo').textContent = 'Sin conexión con el catálogo';
+                    $('oculto-mensaje').classList.remove('hidden');
+                    return;
+                }
+                const rawUrl = catGist.files['catalogo.json'].raw_url;
+                const dataResp = await fetch(rawUrl);
+                catalogo = await dataResp.json();
+                render();
+            } catch (e) {
+                console.error('Error cargando catálogo:', e);
+                $('subtitulo').textContent = 'No se pudo cargar el catálogo';
+                $('oculto-mensaje').classList.remove('hidden');
+            }
+        }
+
+        function visibles() {
+            let lista = catalogo.discos.slice();
+            if (filtro === 'venta') {
+                lista = lista.filter(d => d.enVenta);
+            } else if (filtro !== 'todos') {
+                lista = lista.filter(d => (d.formato || '') === filtro);
+            }
+            if (busqueda) {
+                const q = busqueda.toLowerCase();
+                lista = lista.filter(d =>
+                    (d.artista || '').toLowerCase().includes(q) ||
+                    (d.album || '').toLowerCase().includes(q));
+            }
+            if (orden === 'az') lista.sort((a, b) => (a.artista || '').localeCompare(b.artista || '') || (a.album || '').localeCompare(b.album || ''));
+            else if (orden === 'anio') lista.sort((a, b) => (b.anio || '0').localeCompare(a.anio || '0'));
+            else if (orden === 'precio') lista.sort((a, b) => (a.precioUsd || 99999) - (b.precioUsd || 99999));
+            else lista.sort((a, b) => (b.fechaAgregado || '').localeCompare(a.fechaAgregado || ''));
+            return lista;
+        }
+
+        function tapaHTML(d, cls) {
+            return d.tapa
+                ? `<img src="${esc(d.tapa)}" alt="${esc(d.album)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;${cls}&quot;>🎵</div>'">`
+                : `<div class="${cls}">🎵</div>`;
+        }
+
+        function render() {
+            const total = catalogo.discos.length;
+            const enVenta = catalogo.discos.filter(d => d.enVenta).length;
+            $('subtitulo').textContent = `${total} discos${enVenta ? ' · ' + enVenta + ' en venta' : ''}`;
+            $('controles').style.display = '';
+
+            // Recientes (con flag nuevo)
+            const recientes = catalogo.discos.filter(d => d.nuevo).slice(0, 12);
+            if (recientes.length > 0) {
+                $('recientes-seccion').style.display = '';
+                $('recientes').innerHTML = recientes.map((d, i) => `
+                    <div class="reciente-card" onclick="abrirFicha(${catalogo.discos.indexOf(d)})">
+                        ${tapaHTML(d, 'ph')}
+                        <div class="rc-tit">${esc(titleCase(d.artista))}</div>
+                    </div>`).join('');
+            }
+
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const lista = visibles();
+            $('vacio').classList.toggle('hidden', lista.length > 0 || catalogo.discos.length === 0);
+            $('grid').innerHTML = lista.map(d => {
+                const idx = catalogo.discos.indexOf(d);
+                const sub = [d.anio, FORMATOS[d.formato] || d.formato].filter(Boolean).join(' · ');
+                return `
+                <div class="card" onclick="abrirFicha(${idx})">
+                    <div class="tapaco">
+                        ${tapaHTML(d, 'ph')}
+                        ${d.nuevo ? '<span class="badge-nuevo">Nuevo</span>' : ''}
+                        ${d.enVenta ? '<span class="badge-venta">En venta</span>' : ''}
+                    </div>
+                    <div class="c-tit">${esc(titleCase(d.album))}</div>
+                    <div class="c-sub">${esc(titleCase(d.artista))} · ${esc(sub)}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function abrirFicha(idx) {
+            const d = catalogo.discos[idx];
+            if (!d) return;
+            const filas = [
+                ['Formato', [FORMATOS[d.formato] || d.formato, d.formatoDetalle].filter(Boolean).join(' — ')],
+                ['Año lanzamiento', d.anio],
+                ['Año de mi edición', d.anioEdicion],
+                ['Sello', d.sello],
+                ['Género', d.genero],
+                ['Nº de catálogo', d.catalogo],
+                ['Matrix / Runout', d.runout],
+                ['Barcode', d.barcode],
+                ['IFPI mastering', d.sidMastering],
+                ['IFPI molde', d.sidMould]
+            ].filter(([, v]) => v);
+
+            let html = `
+            <button class="btn-cerrar" onclick="cerrarFicha()">✕</button>
+            <div class="ficha-top">
+                ${tapaHTML(d, 'ph')}
+                <div>
+                    <div class="f-art">${esc(titleCase(d.artista))}</div>
+                    <h2>${esc(titleCase(d.album))}${d.anio ? ' (' + esc(d.anio) + ')' : ''}</h2>
+                    <div class="f-badges">
+                        <span class="f-badge fmt">${esc(FORMATOS[d.formato] || d.formato || '')}</span>
+                        ${d.enVenta ? '<span class="f-badge venta">En venta</span>' : ''}
+                        ${d.nuevo ? '<span class="f-badge" style="background:var(--nuevo);color:#fff">Nuevo</span>' : ''}
+                    </div>
+                </div>
+            </div>`;
+
+            if (d.enVenta) {
+                const condicion = [
+                    d.estado ? 'Disco: ' + estadoLargo(d.estado) : '',
+                    d.estadoTapa ? 'Tapa: ' + estadoLargo(d.estadoTapa) : '',
+                    d.tieneInsert === 'si' ? 'Con insert' : ''
+                ].filter(Boolean);
+                html += `
+                <div class="f-precio">
+                    <div>
+                        <div class="lbl">Precio</div>
+                        <div class="usd">${d.precioUsd ? 'US$ ' + esc(d.precioUsd) : 'A consultar'}</div>
+                        ${d.precioArs ? '<div class="ars">≈ $' + Number(d.precioArs).toLocaleString('es-AR') + ' ARS</div>' : ''}
+                    </div>
+                    <div style="text-align:right;font-size:0.78rem;color:var(--text-dim)">${condicion.map(c => esc(c)).join('<br>')}</div>
+                </div>`;
+            }
+
+            html += `<div class="ficha-rows">` + filas.map(([k, v]) =>
+                `<div class="f-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('') + `</div>`;
+
+            if (d.notas) {
+                html += `<div class="f-notas">“${esc(d.notas)}”</div>`;
+            }
+
+            html += `<div class="f-acciones">
+                <button class="btn-consultar" onclick="consultar(${idx})">💬 Consultar por este disco</button>
+                ${d.discogsUrl ? `<a class="btn-discogs" href="${esc(d.discogsUrl)}" target="_blank" rel="noopener">Ver en Discogs ↗</a>` : ''}
+            </div>`;
+
+            $('ficha').innerHTML = html;
+            $('overlay').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function cerrarFicha() {
+            $('overlay').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) cerrarFicha(); });
+
+        function consultar(idx) {
+            const d = catalogo.discos[idx];
+            if (!d) return;
+            const ig = catalogo.instagram || '';
+            const partes = [
+                d.artista ? titleCase(d.artista) : '',
+                titleCase(d.album),
+                [FORMATOS[d.formato] || d.formato, d.anio].filter(Boolean).join(', ')
+            ].filter(Boolean);
+            const mensaje = `¡Hola! Vi en tu catálogo: ${partes.join(' - ')}. ` +
+                `¿Me pasás info de precio y envío? ¡Gracias!`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(mensaje).then(() => {
+                    showToast('✅ Mensaje copiado — pegalo en Instagram');
+                }).catch(() => {});
+            }
+            // Abrir Instagram (DM si el navegador lo permite, si no el perfil)
+            const url = ig ? `https://ig.me/m/${ig.replace(/^@/, '')}` : 'https://instagram.com';
+            window.open(url, '_blank', 'noopener');
+        }
+
+        function showToast(msg) {
+            const t = $('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(t._h);
+            t._h = setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // Controles
+        document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+            document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+            c.classList.add('active');
+            filtro = c.dataset.f;
+            renderGrid();
+        }));
+        $('buscar').addEventListener('input', e => { busqueda = e.target.value.trim(); renderGrid(); });
+        $('orden').addEventListener('change', e => { orden = e.target.value; renderGrid(); });
+
+        cargarCatalogo();
+    </script>
+</body>
+</html>
