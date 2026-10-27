@@ -16,10 +16,10 @@
     <div id="login-screen" class="login-screen">
         <div class="login-box">
             <h1>Mis Discos</h1>
-            <p>IngresÃ¡ el PIN para acceder</p>
+            <p>Ingresá el PIN para acceder</p>
             <input type="password" id="login-password" placeholder="PIN" maxlength="8" autofocus>
             <button id="btn-login" class="btn-primary">Entrar</button>
-            <div id="login-error" class="login-error hidden">ContraseÃ±a incorrecta</div>
+            <div id="login-error" class="login-error hidden">Contraseña incorrecta</div>
         </div>
     </div>
 
@@ -29,16 +29,16 @@
         <header class="app-header">
             <h1>Mis Discos</h1>
             <div class="header-btns">
-                <button id="btn-catalog" class="header-btn" title="CatÃ¡logo pÃºblico">
-                    <span id="catalog-icon">ðŸ“¢</span>
+                <button id="btn-catalog" class="header-btn" title="Catálogo público">
+                    <span id="catalog-icon">📢</span>
                 </button>
                 <button id="btn-sync" class="header-btn" title="Sync con GitHub">
-                    <span id="sync-icon">ðŸ”„</span>
+                    <span id="sync-icon">🔄</span>
                 </button>
             </div>
         </header>
 
-        <!-- Modal de configuraciÃ³n Sync -->
+        <!-- Modal de configuración Sync -->
         <div id="modal-sync" class="modal-overlay hidden">
             <div class="modal">
                 <div class="modal-header">
@@ -46,7 +46,7 @@
                     <button class="modal-close" onclick="document.getElementById('modal-sync').classList.add('hidden')">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p class="sync-info">SincronizÃ¡ tu colecciÃ³n entre dispositivos usando GitHub Gist.</p>
+                    <p class="sync-info">Sincronizá tu colección entre dispositivos usando GitHub Gist.</p>
                     
                     <div class="form-group">
                         <label for="sync-token">Personal Access Token</label>
@@ -71,46 +71,46 @@
             </div>
         </div>
 
-        <!-- Modal de CatÃ¡logo PÃºblico -->
+        <!-- Modal de Catálogo Público -->
         <div id="modal-catalog" class="modal-overlay hidden">
             <div class="modal">
                 <div class="modal-header">
-                    <h2>CatÃ¡logo pÃºblico</h2>
+                    <h2>Catálogo público</h2>
                     <button class="modal-close" onclick="document.getElementById('modal-catalog').classList.add('hidden')">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p class="sync-info">PublicÃ¡ tu colecciÃ³n en una pÃ¡gina para compartir por Instagram. Solo se publican los datos que elijas: nunca tu reseÃ±a personal ni nada privado.</p>
+                    <p class="sync-info">Publicá tu colección en una página para compartir por Instagram. Solo se publican los datos que elijas: nunca tu reseña personal ni nada privado.</p>
 
                     <div class="form-group">
                         <label for="catalog-instagram">Tu usuario de Instagram</label>
                         <input type="text" id="catalog-instagram" placeholder="_pablobyte">
-                        <small>Aparece en el botÃ³n "Consultar" del catÃ¡logo. Cambialo acÃ¡ cuando quieras, sin tocar cÃ³digo.</small>
+                        <small>Aparece en el botón "Consultar" del catálogo. Cambialo acá cuando quieras, sin tocar código.</small>
                     </div>
 
                     <div class="sync-status" id="catalog-status"></div>
 
                     <div class="sync-actions">
-                        <button id="btn-catalog-publish" class="btn-primary">ðŸ“¢ Publicar catÃ¡logo</button>
-                        <button id="btn-catalog-hide" class="btn-secondary hidden">ðŸ™ˆ Ocultar catÃ¡logo</button>
+                        <button id="btn-catalog-publish" class="btn-primary">📢 Publicar catálogo</button>
+                        <button id="btn-catalog-hide" class="btn-secondary hidden">🙈 Ocultar catálogo</button>
                     </div>
 
                     <div class="sync-last">
-                        <a id="catalog-link" class="hidden" href="https://pablobyteok.github.io/mis-discos-app/catalogo.html" target="_blank">ðŸ”— Abrir tu catÃ¡logo</a>
+                        <a id="catalog-link" class="hidden" href="https://pablobyteok.github.io/mis-discos-app/catalogo.html" target="_blank">🔗 Abrir tu catálogo</a>
                     </div>
 
-                    <p class="sync-info" style="margin-top:10px;font-size:0.8rem">Para sacar un disco del catÃ¡logo: editalo y desmarcÃ¡ "Visible en catÃ¡logo".</p>
+                    <p class="sync-info" style="margin-top:10px;font-size:0.8rem">Para sacar un disco del catálogo: editalo y desmarcá "Visible en catálogo".</p>
                 </div>
             </div>
         </div>
 
-        <!-- NotificaciÃ³n de permiso -->
+        <!-- Notificación de permiso -->
         <div id="notification-banner" class="hidden">
-            <p>Â¿QuerÃ©s recibir notificaciones cuando se acerque el aniversario de un disco?</p>
-            <button id="btn-allow-notif">SÃ­, permitir</button>
+            <p>¿Querés recibir notificaciones cuando se acerque el aniversario de un disco?</p>
+            <button id="btn-allow-notif">Sí, permitir</button>
             <button id="btn-deny-notif">Ahora no</button>
         </div>
 
-        <!-- Toast de notificaciÃ³n in-app -->
+        <!-- Toast de notificación in-app -->
         <div id="toast-container"></div>
 
         <!-- PANTALLA 1: Agregar Disco -->
@@ -118,7 +118,7 @@
             <section class="add-disco">
                 <details class="search-box" open>
                     <summary>Buscar por nombre</summary>
-                    <p class="search-hint">Banda y disco para buscar la fecha automÃ¡ticamente</p>
+                    <p class="search-hint">Banda y disco para buscar la fecha automáticamente</p>
                     <div class="form-row">
                         <div class="form-group">
                             <input type="text" id="search-artista" placeholder="Nombre de la banda">
@@ -132,7 +132,7 @@
                 </details>
 
                 <details class="discogs-box" id="discogs-link-box">
-                    <summary>O pegÃ¡ un link de Discogs (opcional)</summary>
+                    <summary>O pegá un link de Discogs (opcional)</summary>
                     <div class="form-group">
                         <input type="text" id="discogs-url" placeholder="https://www.discogs.com/release/...">
                         <button id="btn-fetch-discogs" class="btn-secondary">Buscar</button>
@@ -140,12 +140,12 @@
                 </details>
 
                 <details class="discogs-box" id="discogs-search-box">
-                    <summary>O buscÃ¡ tu ediciÃ³n en Discogs</summary>
-                    <p class="search-hint">Por cÃ³digo de barras, matriz/runout o nÂ° de catÃ¡logo + paÃ­s</p>
+                    <summary>O buscá tu edición en Discogs</summary>
+                    <p class="search-hint">Por código de barras, matriz/runout o n° de catálogo + país</p>
                     <div class="search-tabs">
                         <button class="search-tab active" data-method="barcode">Barcode</button>
                         <button class="search-tab" data-method="matrix">Matriz</button>
-                        <button class="search-tab" data-method="catno">CatÃ¡logo</button>
+                        <button class="search-tab" data-method="catno">Catálogo</button>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -162,7 +162,7 @@
                         </div>
                         <div class="form-group search-country">
                             <select id="discogs-search-country">
-                                <option value="">Todos los paÃ­ses</option>
+                                <option value="">Todos los países</option>
                                 <option value="Europe">Europe</option>
                                 <option value="Argentina" selected>Argentina</option>
                                 <option value="Brazil">Brazil</option>
@@ -189,7 +189,7 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <input type="number" id="discogs-search-year" placeholder="AÃ±o (opcional)" min="1900" max="2099">
+                            <input type="number" id="discogs-search-year" placeholder="Año (opcional)" min="1900" max="2099">
                         </div>
                         <div class="form-group search-country">
                             <select id="discogs-search-qty">
@@ -210,15 +210,15 @@
                     <div class="form-group">
                         <input type="password" id="discogs-token" placeholder="Token de Discogs (se guarda en este navegador)">
                     </div>
-                    <button id="btn-discogs-search" class="btn-secondary">Buscar ediciÃ³n</button>
-                    <button id="btn-barcode-scan" class="btn-secondary">ðŸ“· Escanear</button>
+                    <button id="btn-discogs-search" class="btn-secondary">Buscar edición</button>
+                    <button id="btn-barcode-scan" class="btn-secondary">📷 Escanear</button>
                     <div id="discogs-search-loading" class="hidden">Buscando...</div>
                     <div id="discogs-search-results"></div>
                 </details>
                 
                 <form id="disco-form">
                     <details class="form-section" id="datos-details">
-                        <summary class="form-section-label">CompletÃ¡ los datos</summary>
+                        <summary class="form-section-label">Completá los datos</summary>
                         <div id="fecha-aviso" class="hidden">
                             <p class="fecha-aviso-text"></p>
                         </div>
@@ -228,7 +228,7 @@
                                 <input type="text" id="artista" required>
                             </div>
                             <div class="form-group">
-                                <label for="album">Ãlbum / Disco *</label>
+                                <label for="album">Álbum / Disco *</label>
                                 <input type="text" id="album" required>
                             </div>
                         </div>
@@ -237,17 +237,17 @@
                                 <label for="fecha">Fecha de lanzamiento *</label>
                                 <div class="fecha-input-row">
                                     <input type="date" id="fecha" required>
-                                    <span id="fecha-alert" class="fecha-alert hidden" title="Fecha no verificada â€” solo aÃ±o conocido">âš </span>
+                                    <span id="fecha-alert" class="fecha-alert hidden" title="Fecha no verificada — solo año conocido">⚠</span>
                                 </div>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="sello">Sello discogrÃ¡fico</label>
+                                <label for="sello">Sello discográfico</label>
                                 <input type="text" id="sello">
                             </div>
                             <div class="form-group">
-                                <label for="genero">GÃ©nero</label>
+                                <label for="genero">Género</label>
                                 <input type="text" id="genero" placeholder="Hard Rock, Pop, etc.">
                             </div>
                         </div>
@@ -256,33 +256,33 @@
                             <div id="tapa-upload-area" class="tapa-upload-area tapa-inline">
                                 <div id="tapa-preview" class="tapa-preview hidden">
                                     <img id="tapa-preview-img" src="" alt="Vista previa">
-                                    <button type="button" id="tapa-remove" class="tapa-remove-btn">âœ•</button>
+                                    <button type="button" id="tapa-remove" class="tapa-remove-btn">✕</button>
                                 </div>
                                 <div id="tapa-placeholder" class="tapa-placeholder">
-                                    <span class="tapa-icon">ðŸ“·</span>
-                                    <p>SubÃ­ la foto de la tapa</p>
+                                    <span class="tapa-icon">📷</span>
+                                    <p>Subí la foto de la tapa</p>
                                 </div>
                                 <div class="tapa-buttons tapa-buttons-col">
                                     <label class="btn-secondary tapa-btn">
-                                        ðŸ“ Elegir archivo
+                                        📁 Elegir archivo
                                         <input type="file" id="tapa-file" accept="image/*" hidden>
                                     </label>
-                                    <button type="button" class="btn-secondary tapa-btn" id="btn-tapa-camera">ðŸ“¸ Tomar foto</button>
+                                    <button type="button" class="btn-secondary tapa-btn" id="btn-tapa-camera">📸 Tomar foto</button>
                                 </div>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="notas">Notas / Dato curioso</label>
-                                <textarea id="notas" placeholder="Dato para tu reseÃ±a de Instagram..." rows="2"></textarea>
+                                <textarea id="notas" placeholder="Dato para tu reseña de Instagram..." rows="2"></textarea>
                             </div>
                         </div>
                     </details>
                     <details class="form-section" id="edicion-details">
-                        <summary class="form-section-label">Datos de ediciÃ³n (Discogs)</summary>
+                        <summary class="form-section-label">Datos de edición (Discogs)</summary>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="anio-edicion">AÃ±o de ediciÃ³n</label>
+                                <label for="anio-edicion">Año de edición</label>
                                 <input type="number" id="anio-edicion" placeholder="Ej: 1982" min="1900" max="2099">
                             </div>
                             <div class="form-group">
@@ -335,33 +335,33 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="tiene-insert">Â¿Tiene insert?</label>
+                                <label for="tiene-insert">¿Tiene insert?</label>
                                 <select id="tiene-insert">
                                     <option value="no">No</option>
-                                    <option value="si">SÃ­</option>
+                                    <option value="si">Sí</option>
                                 </select>
                             </div>
                         </div>
                         <details class="precision-box" open>
-                            <summary>PrecisiÃ³n de fechas</summary>
+                            <summary>Precisión de fechas</summary>
                             <label class="check-row"><input type="checkbox" id="fecha-aprox"> Fecha de lanzamiento no exacta</label>
-                            <label class="check-row"><input type="checkbox" id="edicion-aprox"> AÃ±o de ediciÃ³n no exacto</label>
-                            <button type="button" id="btn-investigar-fecha" class="btn-secondary">ðŸ”Ž Investigar fecha (IA)</button>
+                            <label class="check-row"><input type="checkbox" id="edicion-aprox"> Año de edición no exacto</label>
+                            <button type="button" id="btn-investigar-fecha" class="btn-secondary">🔎 Investigar fecha (IA)</button>
                         </details>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="runout">Matrix / Runout</label>
-                                <input type="text" id="runout" placeholder="CÃ³digo zona muerta del vinilo">
+                                <input type="text" id="runout" placeholder="Código zona muerta del vinilo">
                             </div>
                             <div class="form-group">
-                                <label for="catalogo">NÂº de catÃ¡logo</label>
+                                <label for="catalogo">Nº de catálogo</label>
                                 <input type="text" id="catalogo" placeholder="Ej: AL 36184">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="barcode">Barcode</label>
-                                <input type="text" id="barcode" placeholder="CÃ³digo de barras">
+                                <input type="text" id="barcode" placeholder="Código de barras">
                             </div>
                             <div class="form-group">
                                 <label for="discogs-url-edit">Link Discogs</label>
@@ -380,9 +380,9 @@
                         </div>
                     </details>
                     <details class="form-section">
-                        <summary class="form-section-label">ReseÃ±a personal (opcional)</summary>
+                        <summary class="form-section-label">Reseña personal (opcional)</summary>
                         <div class="form-group">
-                            <textarea id="resena" placeholder="Tu opiniÃ³n sobre el disco..."></textarea>
+                            <textarea id="resena" placeholder="Tu opinión sobre el disco..."></textarea>
                         </div>
                     </details>
                     <details class="form-section">
@@ -393,35 +393,35 @@
                                 <input type="number" id="precio-usd" step="0.01" min="0" placeholder="Ej: 25.50" oninput="calcularPrecioArs()">
                             </div>
                             <div class="form-group">
-                                <label>DÃ³lar blue compra <button type="button" onclick="fetchCotizacionBlue()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.8rem;padding:0 4px;">â†»</button></label>
+                                <label>Dólar blue compra <button type="button" onclick="fetchCotizacionBlue()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.8rem;padding:0 4px;">↻</button></label>
                                 <div id="dolar-blue-display" class="dolar-display">Cargando...</div>
                             </div>
                             <div class="form-group">
                                 <label>Equivalente en ARS</label>
-                                <div id="precio-ars-display" class="dolar-display">â€”</div>
+                                <div id="precio-ars-display" class="dolar-display">—</div>
                             </div>
                         </div>
                     </details>
-                    <button type="submit" class="btn-primary">Agregar a mi colecciÃ³n</button>
+                    <button type="submit" class="btn-primary">Agregar a mi colección</button>
                 </form>
             </section>
         </div>
 
-        <!-- PANTALLA 2: PrÃ³ximos Aniversarios -->
+        <!-- PANTALLA 2: Próximos Aniversarios -->
         <div class="screen" id="screen-aniversarios">
             <section class="aniversarios">
-                <button id="btn-proximo-aniversario" class="btn-primary">PrÃ³ximo aniversario</button>
+                <button id="btn-proximo-aniversario" class="btn-primary">Próximo aniversario</button>
                 <div id="lista-aniversarios">
-                    <p class="empty-message">No tenÃ©s discos cargados todavÃ­a.</p>
+                    <p class="empty-message">No tenés discos cargados todavía.</p>
                 </div>
             </section>
         </div>
 
-        <!-- PANTALLA 3: Mi ColecciÃ³n -->
+        <!-- PANTALLA 3: Mi Colección -->
         <div class="screen" id="screen-coleccion">
             <section class="coleccion">
                 <div class="search-catalog">
-                    <input type="text" id="buscar-coleccion" placeholder="Buscar artista o Ã¡lbum...">
+                    <input type="text" id="buscar-coleccion" placeholder="Buscar artista o álbum...">
                 </div>
                 <div class="sort-bar">
                     <span class="sort-label">Ordenar:</span>
@@ -429,8 +429,8 @@
                         <button class="sort-btn active" data-sort="aniversario">Aniversario</button>
                         <button class="sort-btn" data-sort="reciente">Reciente</button>
                         <button class="sort-btn" data-sort="banda">Banda</button>
-                        <button class="sort-btn" data-sort="album">Ãlbum</button>
-                        <button class="sort-btn" data-sort="anio">AÃ±o</button>
+                        <button class="sort-btn" data-sort="album">Álbum</button>
+                        <button class="sort-btn" data-sort="anio">Año</button>
                     </div>
                     <span class="disc-count" id="disc-count"></span>
                 </div>
@@ -451,7 +451,7 @@
                     </label>
                 </div>
                 <div id="lista-coleccion">
-                    <p class="empty-message">VacÃ­o... Â¿Empezamos?</p>
+                    <p class="empty-message">Vacío... ¿Empezamos?</p>
                 </div>
             </section>
         </div>
@@ -463,12 +463,12 @@
                 <span class="nav-label">Agregar</span>
             </button>
             <button class="nav-btn" data-screen="screen-aniversarios">
-                <span class="nav-icon">ðŸŽ‚</span>
+                <span class="nav-icon">🎂</span>
                 <span class="nav-label">Aniversarios</span>
             </button>
             <button class="nav-btn" data-screen="screen-coleccion">
-                <span class="nav-icon">ðŸ’¿</span>
-                <span class="nav-label">ColecciÃ³n</span>
+                <span class="nav-icon">💿</span>
+                <span class="nav-label">Colección</span>
             </button>
         </nav>
     </div> <!-- cierra app-main -->
