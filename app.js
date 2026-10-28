@@ -1326,6 +1326,11 @@ function editarDisco(id) {
                         </div>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Link de Spotify (opcional)</label>
+                    <input type="text" id="edit-spotify-url" value="${disco.spotifyUrl || ''}" placeholder="https://open.spotify.com/album/...">
+                    <small>Para el botón "▶ Escuchar" del catálogo. Si lo dejás vacío, se busca solo con artista + álbum.</small>
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>IFPI mastering (CD)</label>
@@ -1515,6 +1520,7 @@ function editarDisco(id) {
         disco.sidMastering = modal.querySelector('#edit-sid-mastering').value.trim().toUpperCase();
         disco.sidMould = modal.querySelector('#edit-sid-mould').value.trim().toUpperCase();
         disco.discogsUrl = modal.querySelector('#edit-discogs-url').value.trim();
+        disco.spotifyUrl = modal.querySelector('#edit-spotify-url').value.trim();
         disco.precioUsd = modal.querySelector('#edit-precio-usd').value || '';
         disco.cotizacionBlue = disco.cotizacionBlue || cotizacionBlue || '';
         disco.notas = modal.querySelector('#edit-notas').value.trim();
@@ -2675,7 +2681,7 @@ function mergeDiscos(local, gist) {
             byKey.set(key, d);
             if (d.id) seenIds.add(d.id);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'tapaUrl', 'catOculto', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'tapaUrl', 'catOculto', 'spotifyUrl', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;
@@ -2991,6 +2997,7 @@ function construirCatalogoJSON() {
                 sidMould: d.sidMould || '',
                 notas: d.notas || '',
                 discogsUrl: d.discogsUrl || '',
+                spotifyUrl: d.spotifyUrl || '',
                 tapa
             };
             if (d.enVenta) {
@@ -3017,38 +3024,48 @@ function construirCatalogoJSON() {
     }, null, 1);
 }
 
-// Completa tapaUrl faltante consultando Discogs (una sola vez por disco).
-// Solo discos con discogsUrl y sin tapaUrl: los siguientes publicados ya son rápidos.
+// Completa tapaUrl faltante consultando Discogs.
+// v0.9.32: REINTENTOS — hasta 3 intentos por disco. 429 (rate limit)
+// espera 10s; errores de red también se reintentan; si Discogs no tiene
+// imagen para el disco no insiste. Antes se rendía al primer error y
+// el disco quedaba sin tapa en el catálogo sin aviso.
 async function completarTapaUrls(faltantes) {
     const dToken = localStorage.getItem('discogs_token') || '';
     const dAuth = dToken ? `?token=${dToken}` : '';
+    const pedir = (path) => fetch(`https://api.discogs.com/${path}${dAuth}`, {
+        headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
+    });
     let ok = 0;
     for (let i = 0; i < faltantes.length; i++) {
         const d = faltantes[i];
-        try {
-            const info = extraerIdDiscogs(d.discogsUrl);
-            if (!info) continue;
-            const typePath = info.tipo === 'master' ? 'masters' : 'releases';
-            const resp = await fetch(`https://api.discogs.com/${typePath}/${info.id}${dAuth}`, {
-                headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
-            });
-            if (resp.status === 429) { await esperar(5000); i--; continue; }
-            if (!resp.ok) continue;
-            let data = await resp.json();
-            if ((!data.images || data.images.length === 0) && data.master_id) {
-                const mResp = await fetch(`https://api.discogs.com/masters/${data.master_id}${dAuth}`, {
-                    headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
-                });
-                if (mResp.ok) data = await mResp.json();
-            }
-            if (data.images && data.images.length > 0) {
-                const img = data.images.find(x => x.type === 'primary') || data.images[0];
-                d.tapaUrl = img.uri;
-                guardarDiscos();
-                ok++;
-            }
-        } catch (e) { /* un disco menos, no rompe */ }
-        if (i < faltantes.length - 1) await esperar(1200);
+        let esperaLarga = false;
+        for (let intento = 0; intento < 3; intento++) {
+            if (intento > 0) await esperar(esperaLarga ? 10000 : 2500);
+            esperaLarga = false;
+            try {
+                const info = extraerIdDiscogs(d.discogsUrl);
+                if (!info) break;
+                const typePath = info.tipo === 'master' ? 'masters' : 'releases';
+                const resp = await pedir(`${typePath}/${info.id}`);
+                if (resp.status === 429) { esperaLarga = true; continue; }
+                if (!resp.ok) break; // 404 u otro: reintentar no ayuda
+                let data = await resp.json();
+                if ((!data.images || data.images.length === 0) && data.master_id) {
+                    const mResp = await pedir(`masters/${data.master_id}`);
+                    if (mResp.ok) data = await mResp.json();
+                }
+                if (data.images && data.images.length > 0) {
+                    const img = data.images.find(x => x.type === 'primary') || data.images[0];
+                    d.tapaUrl = img.uri;
+                    guardarDiscos();
+                    ok++;
+                } else {
+                    break; // Discogs no tiene imagen de este disco
+                }
+                break;
+            } catch (e) { /* error de red: el próximo intento lo reintenta */ }
+        }
+        if (i < faltantes.length - 1) await esperar(2200);
     }
     return ok;
 }
@@ -3069,11 +3086,19 @@ async function publicarCatalogo() {
     updateCatalogStatus('Buscando tapas faltantes...', 'ok');
 
     try {
-        // 1) Completar tapaUrl de los discos que no la tengan (solo una vez cada uno)
-        const sinUrl = discos.filter(d => !d.catOculto && !d.tapaUrl && d.discogsUrl);
+        // 1) Completar tapaUrl de los discos que no la tengan (con reintentos)
+        const faltanTapas = () => discos.filter(d => !d.catOculto && !d.tapaUrl && d.discogsUrl);
+        const sinUrl = faltanTapas();
         if (sinUrl.length > 0) {
             updateCatalogStatus(`Completando ${sinUrl.length} tapas desde Discogs (puede tardar)...`, 'ok');
             await completarTapaUrls(sinUrl);
+            // Segunda pasada automática a los que quedaron (429 o cortes de red)
+            const quedan = faltanTapas();
+            if (quedan.length > 0 && quedan.length < sinUrl.length) {
+                updateCatalogStatus(`Reintentando ${quedan.length} tapas que faltaron...`, 'ok');
+                await esperar(20000);
+                await completarTapaUrls(quedan);
+            }
         }
 
         // 2) Armar JSON público
@@ -3103,7 +3128,14 @@ async function publicarCatalogo() {
         const data = await resp.json();
         localStorage.setItem(CAT_GIST_KEY, data.id);
 
-        updateCatalogStatus(`✅ Catálogo publicado (${construirConteo()} discos visibles)`, 'ok');
+        // Status honesto: si quedaron discos sin imagen, avisa en vez
+        // del ✓ ciego (antes decía "publicado" aunque faltaran tapas)
+        const sinImagen = JSON.parse(payload).discos.filter(x => !x.tapa).length;
+        updateCatalogStatus(
+            sinImagen > 0
+                ? `✅ Publicado (${construirConteo()} discos) — ⚠ ${sinImagen} sin tapa: subiles imagen desde la edición del disco`
+                : `✅ Catálogo publicado (${construirConteo()} discos visibles)`,
+            'ok');
         updateCatalogUI();
         const link = document.getElementById('catalog-link');
         if (link) {

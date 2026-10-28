@@ -131,6 +131,17 @@
             background: var(--bg); border: 1px solid var(--border); color: var(--text-dim);
             padding: 13px 16px; border-radius: 12px; font-size: 0.85rem; text-decoration: none;
         }
+        .btn-escuchar {
+            background: #1db954; color: #fff; border: none;
+            padding: 13px 16px; border-radius: 12px; font-size: 0.85rem;
+            text-decoration: none; font-weight: 600;
+        }
+        .btn-escuchar:hover { filter: brightness(1.08); }
+        .btn-ia {
+            background: var(--bg-hover); border: 1px solid var(--border); color: var(--text);
+            padding: 13px 16px; border-radius: 12px; font-size: 0.85rem; text-decoration: none;
+        }
+        .btn-ia:hover { border-color: var(--accent); }
         .btn-cerrar {
             position: absolute; top: 10px; right: 12px; background: var(--bg-hover); border: none; color: var(--text);
             width: 34px; height: 34px; border-radius: 50%; font-size: 1.1rem; cursor: pointer;
@@ -216,6 +227,20 @@
                 (i === 0 || !arts.includes(w)) ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
         };
         const estadoLargo = c => c ? (ESTADOS[c] ? c + ' — ' + ESTADOS[c] : c) : '';
+        // Link de Spotify: exacto si el dueño lo cargó, si no búsqueda automática
+        function spotifyDe(d) {
+            const u = (d.spotifyUrl || '').trim();
+            if (/^https:\/\/open\.spotify\.com\//.test(u)) return u;
+            return 'https://open.spotify.com/search/' +
+                encodeURIComponent([d.artista, d.album].filter(Boolean).join(' '));
+        }
+        // Búsqueda en Modo IA de Google (udm=50) armada con los datos de la ficha
+        function infoIA(d) {
+            const partes = [d.artista, d.album, d.anio, d.sello,
+                d.catalogo ? 'catálogo ' + d.catalogo : ''].filter(Boolean);
+            const q = partes.join(' ') + ' reseña, historia y datos de esta edición del álbum';
+            return 'https://www.google.com/search?udm=50&q=' + encodeURIComponent(q);
+        }
 
         async function cargarCatalogo() {
             try {
@@ -262,8 +287,23 @@
 
         function tapaHTML(d, cls) {
             return d.tapa
-                ? `<img src="${esc(d.tapa)}" alt="${esc(d.album)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;${cls}&quot;>🎵</div>'">`
+                ? `<img src="${esc(d.tapa)}" alt="${esc(d.album)}" loading="lazy" data-retry="0" onerror="tapaFalla(this, '${cls}')">`
                 : `<div class="${cls}">🎵</div>`;
+        }
+        // Si la imagen falla (corte de red, proxy ocupado) reintenta 2 veces
+        // con pausa antes de rendirse y mostrar el placeholder musical.
+        function tapaFalla(img, cls) {
+            const r = parseInt(img.getAttribute('data-retry') || '0', 10);
+            if (r < 2) {
+                img.setAttribute('data-retry', r + 1);
+                const base = img.src.split('#')[0];
+                setTimeout(() => { img.src = base + '#r' + (r + 1); }, 1500 * (r + 1));
+            } else {
+                const div = document.createElement('div');
+                div.className = cls;
+                div.textContent = '🎵';
+                img.replaceWith(div);
+            }
         }
 
         function render() {
@@ -362,6 +402,8 @@
 
             html += `<div class="f-acciones">
                 <button class="btn-consultar" onclick="consultar(${idx})">💬 Consultar por este disco</button>
+                <a class="btn-escuchar" href="${esc(spotifyDe(d))}" target="_blank" rel="noopener">▶ Escuchar en Spotify</a>
+                <a class="btn-ia" href="${esc(infoIA(d))}" target="_blank" rel="noopener">🤖 Más info de este álbum</a>
                 ${d.discogsUrl ? `<a class="btn-discogs" href="${esc(d.discogsUrl)}" target="_blank" rel="noopener">Ver en Discogs ↗</a>` : ''}
             </div>`;
 
