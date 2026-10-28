@@ -3024,50 +3024,135 @@ function construirCatalogoJSON() {
     }, null, 1);
 }
 
-// Completa tapaUrl faltante consultando Discogs.
-// v0.9.32: REINTENTOS — hasta 3 intentos por disco. 429 (rate limit)
-// espera 10s; errores de red también se reintentan; si Discogs no tiene
-// imagen para el disco no insiste. Antes se rendía al primer error y
-// el disco quedaba sin tapa en el catálogo sin aviso.
-async function completarTapaUrls(faltantes) {
+// v0.9.33 — Busca la URL de tapa en una CADENA de fuentes:
+//   1) Discogs (la edición exacta, con reintentos por rate limit)
+//   2) Wikipedia (español, luego inglés)
+//   3) iTunes (imágenes oficiales de Apple, sin clave)
+// Si ninguna tiene imagen, marca el disco como tapaFallida para no
+// volver a buscarlo en cada publicación. El botón "🔄 Reintentar
+// tapas fallidas" de la ventana de publicar limpia esa marca.
+// Muestra el contador "X de Y" en el estado mientras trabaja.
+async function completarTapaUrls(faltantes, etiqueta = 'Buscando tapas') {
     const dToken = localStorage.getItem('discogs_token') || '';
     const dAuth = dToken ? `?token=${dToken}` : '';
-    const pedir = (path) => fetch(`https://api.discogs.com/${path}${dAuth}`, {
+    const pedirDiscogs = (path) => fetch(`https://api.discogs.com/${path}${dAuth}`, {
         headers: { 'User-Agent': 'DiscosApp/1.0 (discos-app)' }
     });
     let ok = 0;
     for (let i = 0; i < faltantes.length; i++) {
         const d = faltantes[i];
-        let esperaLarga = false;
+        updateCatalogStatus(
+            `${etiqueta}… ${i + 1} de ${faltantes.length} — ${d.artista || ''} ${d.album || ''}`.trim(), 'ok');
+        let tope429 = false;
+        let url = '';
+
+        // --- Fuente 1: Discogs (hasta 3 intentos) ---
         for (let intento = 0; intento < 3; intento++) {
-            if (intento > 0) await esperar(esperaLarga ? 10000 : 2500);
-            esperaLarga = false;
+            if (intento > 0) await esperar(tope429 ? 10000 : 2500);
+            tope429 = false;
             try {
                 const info = extraerIdDiscogs(d.discogsUrl);
                 if (!info) break;
                 const typePath = info.tipo === 'master' ? 'masters' : 'releases';
-                const resp = await pedir(`${typePath}/${info.id}`);
-                if (resp.status === 429) { esperaLarga = true; continue; }
+                const resp = await pedirDiscogs(`${typePath}/${info.id}`);
+                if (resp.status === 429) { tope429 = true; continue; }
                 if (!resp.ok) break; // 404 u otro: reintentar no ayuda
                 let data = await resp.json();
                 if ((!data.images || data.images.length === 0) && data.master_id) {
-                    const mResp = await pedir(`masters/${data.master_id}`);
+                    const mResp = await pedirDiscogs(`masters/${data.master_id}`);
                     if (mResp.ok) data = await mResp.json();
                 }
                 if (data.images && data.images.length > 0) {
                     const img = data.images.find(x => x.type === 'primary') || data.images[0];
-                    d.tapaUrl = img.uri;
-                    guardarDiscos();
-                    ok++;
-                } else {
-                    break; // Discogs no tiene imagen de este disco
+                    url = img.uri;
                 }
                 break;
             } catch (e) { /* error de red: el próximo intento lo reintenta */ }
         }
-        if (i < faltantes.length - 1) await esperar(2200);
+
+        // --- Fuente 2: Wikipedia (español, luego inglés) ---
+        if (!url) url = await tapaDeWikipedia(d.artista, d.album);
+
+        // --- Fuente 3: iTunes ---
+        if (!url) url = await tapaDeiTunes(d.artista, d.album);
+
+        if (url) {
+            d.tapaUrl = url;
+            d.tapaFallida = false;
+            guardarDiscos();
+            ok++;
+        } else if (!tope429) {
+            // Ninguna fuente tiene imagen y no fue problema del rate limit:
+            // queda memorizado para no volver a buscarlo a cada publicación
+            d.tapaFallida = true;
+            guardarDiscos();
+        }
+        if (i < faltantes.length - 1) await esperar(1600);
     }
     return ok;
+}
+
+// Fuente 2: imagen principal de Wikipedia (la de la infobox, que en los
+// artículos de álbumes suele ser la tapa). Busca en español y en inglés.
+async function tapaDeWikipedia(artista, album) {
+    if (!artista || !album) return '';
+    const busquedas = [
+        `${album} ${artista}`,
+        `${album} (álbum) ${artista}`,
+        `${album} (album) ${artista}`
+    ];
+    for (const q of busquedas) {
+        for (const lang of ['es', 'en']) {
+            try {
+                const u = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=3&prop=pageimages&piprop=thumbnail&pithumbsize=600&redirects=1`;
+                const resp = await fetch(u);
+                if (!resp.ok) continue;
+                const data = await resp.json();
+                const pages = data && data.query && data.query.pages;
+                if (!pages) continue;
+                const norm = s => (s || '').toLowerCase().normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+                const alb = norm(album);
+                for (const page of Object.values(pages)) {
+                    const src = page && page.thumbnail && page.thumbnail.source;
+                    if (!src || !/upload\.wikimedia\.org/.test(src)) continue;
+                    // Seguridad: el título del artículo debe referirse al álbum,
+                    // no a una foto de personas relacionadas (falsos positivos
+                    // como "Ricardo Mollo" cuando se busca un álbum de Sumo)
+                    const tit = norm(page.title);
+                    const relacionado = alb.length >= 4 &&
+                        (tit.includes(alb) || alb.includes(tit) ||
+                         alb.split(' ').some(p => p.length >= 4 && tit.includes(p)));
+                    if (relacionado) return src;
+                }
+            } catch (e) { /* sin conexión: pasa a la siguiente */ }
+        }
+    }
+    return '';
+}
+
+// Fuente 3: iTunes (imágenes oficiales de Apple, sin clave, cuadradas).
+// Prefiere coincidencia exacta de artista + álbum, si no la más cercana.
+async function tapaDeiTunes(artista, album) {
+    if (!artista || !album) return '';
+    try {
+        const q = encodeURIComponent(`${artista} ${album}`);
+        const resp = await fetch(`https://itunes.apple.com/search?term=${q}&entity=album&limit=5`);
+        if (!resp.ok) return '';
+        const data = await resp.json();
+        const norm = s => (s || '').toLowerCase().normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+        const a = norm(artista), al = norm(album);
+        const resultados = (data.results || []).filter(r => r.artworkUrl100);
+        let mejor = resultados.find(r => norm(r.artistName) === a && norm(r.collectionName) === al);
+        if (!mejor) mejor = resultados.find(r => norm(r.collectionName).includes(al));
+        if (!mejor) mejor = resultados[0];
+        if (mejor) {
+            // Pide 600x600 en vez del thumbnail de 100x100
+            return mejor.artworkUrl100.replace(/\/\d+x\d+bb\.jpe?g$/, '/600x600bb.jpg');
+        }
+    } catch (e) { /* sin conexión */ }
+    return '';
 }
 
 async function publicarCatalogo() {
@@ -3083,28 +3168,16 @@ async function publicarCatalogo() {
 
     const btn = document.getElementById('btn-catalog-publish');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Publicando...'; }
-    updateCatalogStatus('Buscando tapas faltantes...', 'ok');
 
     try {
-        // 1) Completar tapaUrl de los discos que no la tengan (con reintentos)
-        const faltanTapas = () => discos.filter(d => !d.catOculto && !d.tapaUrl && d.discogsUrl);
-        const sinUrl = faltanTapas();
-        if (sinUrl.length > 0) {
-            updateCatalogStatus(`Completando ${sinUrl.length} tapas desde Discogs (puede tardar)...`, 'ok');
-            await completarTapaUrls(sinUrl);
-            // Segunda pasada automática a los que quedaron (429 o cortes de red)
-            const quedan = faltanTapas();
-            if (quedan.length > 0 && quedan.length < sinUrl.length) {
-                updateCatalogStatus(`Reintentando ${quedan.length} tapas que faltaron...`, 'ok');
-                await esperar(20000);
-                await completarTapaUrls(quedan);
-            }
-        }
-
-        // 2) Armar JSON público
+        // v0.9.33 — Se publica PRIMERO el JSON con lo que hay ahora
+        // (aparece al instante en el catálogo) y recién después se buscan
+        // las tapas faltantes en segundo plano. Si aparecen imágenes
+        // nuevas se vuelve a publicar solo. Así el botón no se queda
+        // colgado minutos sin subir nada.
+        updateCatalogStatus('Publicando catálogo...', 'ok');
         const payload = construirCatalogoJSON();
 
-        // 3) Crear o actualizar el Gist público
         const { gistId } = getCatalogConfig();
         let resp;
         if (gistId) {
@@ -3128,26 +3201,79 @@ async function publicarCatalogo() {
         const data = await resp.json();
         localStorage.setItem(CAT_GIST_KEY, data.id);
 
-        // Status honesto: si quedaron discos sin imagen, avisa en vez
-        // del ✓ ciego (antes decía "publicado" aunque faltaran tapas)
-        const sinImagen = JSON.parse(payload).discos.filter(x => !x.tapa).length;
-        updateCatalogStatus(
-            sinImagen > 0
-                ? `✅ Publicado (${construirConteo()} discos) — ⚠ ${sinImagen} sin tapa: subiles imagen desde la edición del disco`
-                : `✅ Catálogo publicado (${construirConteo()} discos visibles)`,
-            'ok');
-        updateCatalogUI();
         const link = document.getElementById('catalog-link');
         if (link) {
             link.href = 'https://pablobyteok.github.io/mis-discos-app/catalogo.html';
             link.classList.remove('hidden');
         }
+
+        // 2) Buscar tapas faltantes (Discogs → Wikipedia → iTunes),
+        //    salteando las que ya se sabe que no existen (tapaFallida)
+        const faltanTapas = () => discos.filter(d =>
+            !d.catOculto && !d.tapaUrl && d.discogsUrl && !d.tapaFallida);
+        let encontradas = 0;
+        const primerPaso = faltanTapas();
+        if (primerPaso.length > 0) {
+            encontradas += await completarTapaUrls(primerPaso, 'Buscando tapas');
+            // Segunda pasada a los que fallaron por rate limit o corte de red
+            const quedan = faltanTapas();
+            if (quedan.length > 0 && quedan.length < primerPaso.length) {
+                updateCatalogStatus(`Reintentando ${quedan.length} tapas...`, 'ok');
+                await esperar(15000);
+                encontradas += await completarTapaUrls(quedan, 'Reintentando tapas');
+            }
+        }
+
+        // 3) Si aparecieron tapas nuevas, se vuelve a publicar solo
+        if (encontradas > 0) {
+            updateCatalogStatus(`Actualizando catálogo con ${encontradas} tapa(s) nueva(s)...`, 'ok');
+            const resp2 = await fetch(`https://api.github.com/gists/${getCatalogConfig().gistId}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: { 'catalogo.json': { content: construirCatalogoJSON() } } })
+            });
+            if (!resp2.ok) throw new Error(`GitHub ${resp2.status}`);
+        }
+
+        // 4) Status honesto: si quedaron discos sin imagen, avisa con el
+        //    número y los detalles (antes decía "publicado" a ciegas)
+        const sinImagen = JSON.parse(construirCatalogoJSON()).discos.filter(x => !x.tapa).length;
+        const fallidas = discos.filter(d => !d.catOculto && d.tapaFallida).length;
+        let aviso = '';
+        if (sinImagen > 0) {
+            aviso = ` — ⚠ ${sinImagen} sin tapa`;
+            if (fallidas > 0) aviso += ` (${fallidas} sin imagen en Discogs/Wikipedia/iTunes)`;
+            aviso += ': subiles imagen desde la edición del disco';
+        }
+        updateCatalogStatus(`✅ Catálogo publicado (${construirConteo()} discos visibles)${aviso}`, 'ok');
+        updateCatalogUI();
+        mostrarBotonReintentar();
     } catch (err) {
         console.error('Error publicando catálogo:', err);
         updateCatalogStatus('Error: ' + err.message, 'error');
     } finally {
         if (btn) { btn.disabled = false; updateCatalogUI(); }
     }
+}
+
+// v0.9.33 — Limpia la memoria de tapas que no se encontraron en
+// Discogs/Wikipedia/iTunes y vuelve a buscarlas + publicar.
+async function reintentarTapasFallidas() {
+    const fallidos = discos.filter(d => !d.catOculto && d.tapaFallida);
+    if (fallidos.length === 0) { mostrarBotonReintentar(); return; }
+    fallidos.forEach(d => { d.tapaFallida = false; });
+    guardarDiscos();
+    await publicarCatalogo();
+}
+
+// Muestra/oculta el botón "🔄 Reintentar tapas fallidas" según cuántos
+// discos queden memorizados como sin imagen en las 3 fuentes.
+function mostrarBotonReintentar() {
+    const b = document.getElementById('btn-catalog-retry');
+    if (!b) return;
+    const fallidos = discos.filter(d => !d.catOculto && d.tapaFallida).length;
+    b.classList.toggle('hidden', fallidos === 0);
+    b.textContent = `🔄 Reintentar tapas fallidas (${fallidos})`;
 }
 
 function construirConteo() {
@@ -3181,10 +3307,12 @@ async function ocultarCatalogo() {
 document.getElementById('btn-catalog')?.addEventListener('click', () => {
     document.getElementById('modal-catalog').classList.remove('hidden');
     updateCatalogUI();
+    mostrarBotonReintentar();
     updateCatalogStatus('');
 });
 document.getElementById('btn-catalog-publish')?.addEventListener('click', publicarCatalogo);
 document.getElementById('btn-catalog-hide')?.addEventListener('click', ocultarCatalogo);
+document.getElementById('btn-catalog-retry')?.addEventListener('click', reintentarTapasFallidas);
 
 function investigarEdicion(d, btn) {
     if (!d.artista || !d.album) {

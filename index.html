@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.32</title>
-    <link rel="stylesheet" href="styles.css?v=0.9.32">
+    <title>Mis Discos v0.9.33</title>
+    <link rel="stylesheet" href="styles.css?v=0.9.33">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -92,6 +92,7 @@
                     <div class="sync-actions">
                         <button id="btn-catalog-publish" class="btn-primary">📢 Publicar catálogo</button>
                         <button id="btn-catalog-hide" class="btn-secondary hidden">🙈 Ocultar catálogo</button>
+                        <button id="btn-catalog-retry" class="btn-secondary hidden">🔄 Reintentar tapas fallidas</button>
                     </div>
 
                     <div class="sync-last">
@@ -473,7 +474,7 @@
         </nav>
     </div> <!-- cierra app-main -->
 
-    <script src="app.js?v=0.9.32"></script>
+    <script src="app.js?v=0.9.33"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');
