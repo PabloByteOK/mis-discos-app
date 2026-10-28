@@ -79,7 +79,13 @@
         }
         .badge-nuevo {
             position: absolute; top: 6px; left: 6px; background: var(--nuevo); color: #fff;
-            font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
+            font-size: 0.55rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
+            max-width: 75px; text-align: center; line-height: 1.2;
+        }
+        .badge-formato {
+            position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.75); color: #fff;
+            font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .badge-venta {
             position: absolute; top: 6px; right: 6px; background: var(--venta); color: #fff;
@@ -336,8 +342,9 @@
                 <div class="card" onclick="abrirFicha(${idx})">
                     <div class="tapaco">
                         ${tapaHTML(d, 'ph')}
-                        ${d.nuevo ? '<span class="badge-nuevo">Nuevo</span>' : ''}
+                        ${d.nuevo ? '<span class="badge-nuevo">Recién agregado</span>' : ''}
                         ${d.enVenta ? '<span class="badge-venta">En venta</span>' : ''}
+                        <span class="badge-formato">${d.formato === 'cd' ? 'CD' : d.formato === 'vinilo' ? 'LP' : (d.formato || '')}</span>
                     </div>
                     <div class="c-tit">${esc(titleCase(d.album))}</div>
                     <div class="c-sub">${esc(titleCase(d.artista))} · ${esc(sub)}</div>
@@ -371,7 +378,7 @@
                     <div class="f-badges">
                         <span class="f-badge fmt">${esc(FORMATOS[d.formato] || d.formato || '')}</span>
                         ${d.enVenta ? '<span class="f-badge venta">En venta</span>' : ''}
-                        ${d.nuevo ? '<span class="f-badge" style="background:var(--nuevo);color:#fff">Nuevo</span>' : ''}
+                        ${d.nuevo ? '<span class="f-badge" style="background:var(--nuevo);color:#fff">Recién agregado</span>' : ''}
                     </div>
                 </div>
             </div>`;
