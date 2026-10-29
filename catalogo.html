@@ -542,19 +542,25 @@
             const ig = catalogo.instagram || '';
             const discoTxt = (d.artista ? titleCase(d.artista) : '') +
                 (d.artista && d.album ? ' - ' : '') + titleCase(d.album);
-            const extra = [FORMATOS[d.formato] || d.formato, d.anio].filter(Boolean).join(', ');
+            // Mensaje corto: solo saludo + disco + formato (sin año ni
+            // precio: esa info ya está en la ficha del catálogo)
+            const fmt = FORMATOS[d.formato] || d.formato || '';
             const mensaje = `Hola! Quiero consultarte por este disco "${discoTxt}"` +
-                `${extra ? ' (' + extra + ')' : ''}. ¿Me pasás info de precio y envío? ¡Gracias!`;
+                `${fmt ? ' (' + fmt + ')' : ''}`;
 
-            // 1) Copiar ANTES de abrir (con el foco y el gesto del usuario)
+            // 1) Copiar ANTES de abrir (con el foco y el gesto del usuario):
+            //    respaldo por si la app de Instagram ignora el texto precargado
             const okP = copiarTexto(mensaje);
-            // 2) Abrir Instagram (DM si el navegador lo permite, si no el perfil)
-            const url = ig ? `https://ig.me/m/${ig.replace(/^@/, '')}` : 'https://instagram.com';
+            // 2) Abrir el DM con el mensaje PRECARGADO (?text=): en las versiones
+            //    de Instagram que lo admiten, el texto aparece solo en el chat y
+            //    el cliente solo tiene que mandar
+            const base = ig ? `https://ig.me/m/${ig.replace(/^@/, '')}` : 'https://instagram.com';
+            const url = ig ? `${base}?text=${encodeURIComponent(mensaje)}` : base;
             window.open(url, '_blank', 'noopener');
             // 3) Feedback: si no se pudo copiar, se muestra la caja con el mensaje
             Promise.resolve(okP).then(ok => {
                 if (ok) {
-                    showToast('✅ Mensaje copiado — pegalo en el chat');
+                    showToast('✅ Mensaje listo — si no aparece solo en el chat, pegalo');
                 } else {
                     mostrarConsulta(mensaje);
                     showToast('⚠️ No pude copiar — copiá el mensaje de la caja');
