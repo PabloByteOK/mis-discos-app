@@ -1035,12 +1035,12 @@ function renderColeccion(filtro) {
     }
     const ventaBtn = document.querySelector('.filter-btn[data-filter="venta"]');
     if (ventaBtn) {
-        const n = discos.filter(d => d.enVenta).length;
+        const n = discos.filter(d => d.enVenta && !d.vendido).length;
         ventaBtn.textContent = n ? `En venta (${n})` : 'En venta';
     }
 
     if (currentFilter === 'venta') {
-        discosFiltrados = discosFiltrados.filter(d => d.enVenta);
+        discosFiltrados = discosFiltrados.filter(d => d.enVenta && !d.vendido);
     } else if (currentFilter !== 'todos') {
         discosFiltrados = discosFiltrados.filter(d => d.formato === currentFilter);
     }
@@ -1101,7 +1101,9 @@ function renderColeccion(filtro) {
                         ${disco.estadoTapa ? `<span class="mini-badge tapa-badge">Tapa: ${disco.estadoTapa}</span>` : ''}
                         ${disco.estado ? `<span class="mini-badge estado-badge ${getEstadoClass(disco.estado)}">${disco.estado}</span>` : ''}
                         ${disco.tieneInsert === 'si' ? '<span class="mini-badge insert-badge">INS</span>' : ''}
-                        ${disco.enVenta ? '<span class="mini-badge venta-badge">EN VENTA</span>' : ''}
+                        ${disco.vendido
+                            ? '<span class="mini-badge" style="background:#e53935;color:#fff">VENDIDO</span>'
+                            : (disco.enVenta ? '<span class="mini-badge venta-badge">EN VENTA</span>' : '')}
                         ${disco.catalogo ? `<span class="mini-badge cat-badge">${disco.catalogo}</span>` : ''}
                     </div>
                 </div>
@@ -1295,6 +1297,11 @@ function editarDisco(id) {
                         <label class="check-row"><input type="checkbox" id="edit-en-venta" ${disco.enVenta ? 'checked' : ''}> En venta</label>
                     </div>
                     <div class="form-group">
+                        <label class="check-row"><input type="checkbox" id="edit-vendido" ${disco.vendido ? 'checked' : ''}> Vendido</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label class="check-row"><input type="checkbox" id="edit-cat-visible" ${disco.catOculto ? '' : 'checked'}> Visible en catálogo</label>
                     </div>
                 </div>
@@ -1330,6 +1337,19 @@ function editarDisco(id) {
                     <label>Link de Spotify (opcional)</label>
                     <input type="text" id="edit-spotify-url" value="${disco.spotifyUrl || ''}" placeholder="https://open.spotify.com/album/...">
                     <small>Para el botón "▶ Escuchar" del catálogo. Si lo dejás vacío, se busca solo con artista + álbum.</small>
+                </div>
+                <div class="form-group">
+                    <label>Link de YouTube (opcional)</label>
+                    <input type="text" id="edit-youtube-url" value="${disco.youtubeUrl || ''}" placeholder="https://www.youtube.com/watch?v=...">
+                    <small>Para el botón "▶ Ver en YouTube" del catálogo. Si lo dejás vacío, se busca solo con artista + álbum.</small>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="check-row"><input type="checkbox" id="edit-mostrar-spotify" ${disco.mostrarSpotify !== false ? 'checked' : ''}> Mostrar botón Spotify</label>
+                    </div>
+                    <div class="form-group">
+                        <label class="check-row"><input type="checkbox" id="edit-mostrar-youtube" ${disco.mostrarYouTube ? 'checked' : ''}> Mostrar botón YouTube</label>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -1373,6 +1393,15 @@ function editarDisco(id) {
     modal.querySelector('#modal-close').addEventListener('click', () => modal.remove());
     modal.querySelector('#modal-cancel').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    // "En venta" y "Vendido" son mutuamente excluyentes:
+    // un disco vendido deja de estar en venta (y sale del filtro "En venta")
+    const chkEnVenta = modal.querySelector('#edit-en-venta');
+    const chkVendido = modal.querySelector('#edit-vendido');
+    if (chkEnVenta && chkVendido) {
+        chkEnVenta.addEventListener('change', () => { if (chkEnVenta.checked) chkVendido.checked = false; });
+        chkVendido.addEventListener('change', () => { if (chkVendido.checked) chkEnVenta.checked = false; });
+    }
 
     const modalSaveBtn = modal.querySelector('#modal-save');
     const modalRequired = ['#edit-artista', '#edit-album', '#edit-fecha'].map(s => modal.querySelector(s));
@@ -1513,6 +1542,8 @@ function editarDisco(id) {
         disco.estadoTapa = modal.querySelector('#edit-estado-tapa').value;
         disco.tieneInsert = modal.querySelector('#edit-tiene-insert').value;
         disco.enVenta = modal.querySelector('#edit-en-venta').checked;
+        disco.vendido = modal.querySelector('#edit-vendido').checked;
+        if (disco.vendido) disco.enVenta = false;
         disco.catOculto = !modal.querySelector('#edit-cat-visible').checked;
         disco.runout = modal.querySelector('#edit-runout').value.trim();
         disco.catalogo = modal.querySelector('#edit-catalogo').value.trim();
@@ -1521,6 +1552,9 @@ function editarDisco(id) {
         disco.sidMould = modal.querySelector('#edit-sid-mould').value.trim().toUpperCase();
         disco.discogsUrl = modal.querySelector('#edit-discogs-url').value.trim();
         disco.spotifyUrl = modal.querySelector('#edit-spotify-url').value.trim();
+        disco.youtubeUrl = modal.querySelector('#edit-youtube-url').value.trim();
+        disco.mostrarSpotify = modal.querySelector('#edit-mostrar-spotify').checked;
+        disco.mostrarYouTube = modal.querySelector('#edit-mostrar-youtube').checked;
         disco.precioUsd = modal.querySelector('#edit-precio-usd').value || '';
         disco.cotizacionBlue = disco.cotizacionBlue || cotizacionBlue || '';
         disco.notas = modal.querySelector('#edit-notas').value.trim();
@@ -2695,8 +2729,12 @@ function mergeDiscos(local, gist) {
             byKey.set(key, d);
             if (d.id) seenIds.add(d.id);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'tapaUrl', 'catOculto', 'spotifyUrl', 'enVenta', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'tapaUrl', 'catOculto', 'spotifyUrl', 'youtubeUrl', 'enVenta', 'vendido', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
+            }
+            // Flags booleanos: copiar aunque el valor sea false/true explícito
+            for (const f of ['mostrarSpotify', 'mostrarYouTube']) {
+                if (existing[f] === undefined && d[f] !== undefined) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;
         }
@@ -2979,7 +3017,7 @@ function updateCatalogUI() {
 // Armado del JSON público: SOLO lo que querés mostrar.
 // - reseña personal NUNCA se publica
 // - notas (dato curioso de Discogs) sí, son públicas de origen
-// - estado/estadoTapa/insert solo si está en venta
+// - estado/estadoTapa/insert solo si está en venta (o si ya se vendió)
 // - tapa: URL de Discogs vía proxy (nada de base64, nada de espacio)
 function construirCatalogoJSON() {
     const { instagram } = getCatalogConfig();
@@ -3012,13 +3050,24 @@ function construirCatalogoJSON() {
                 notas: d.notas || '',
                 discogsUrl: d.discogsUrl || '',
                 spotifyUrl: d.spotifyUrl || '',
+                youtubeUrl: d.youtubeUrl || '',
+                mostrarSpotify: d.mostrarSpotify !== false,
+                mostrarYouTube: d.mostrarYouTube === true,
                 tapa
             };
-            if (d.enVenta) {
+            // Un disco vendido NUNCA se publica como "en venta"
+            if (d.enVenta && !d.vendido) {
                 obj.enVenta = true;
                 obj.precioUsd = d.precioUsd || '';
                 obj.cotizacionBlue = d.cotizacionBlue || '';
                 obj.precioArs = (d.precioUsd && d.cotizacionBlue) ? Math.round(d.precioUsd * d.cotizacionBlue) : '';
+                obj.estado = d.estado || '';
+                obj.estadoTapa = d.estadoTapa || '';
+                obj.tieneInsert = d.tieneInsert || '';
+            }
+            if (d.vendido) {
+                // Marca de vendido: la condición viaja como constancia, sin precio
+                obj.vendido = true;
                 obj.estado = d.estado || '';
                 obj.estadoTapa = d.estadoTapa || '';
                 obj.tieneInsert = d.tieneInsert || '';

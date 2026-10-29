@@ -96,6 +96,19 @@
             font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+        .badge-vendido {
+            background: #e53935; color: #fff;
+            font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
+        }
+        /* Cruz roja sobre la tapa de los discos vendidos */
+        .cruz-vendido {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.5); pointer-events: none; border-radius: 10px;
+        }
+        .cruz-vendido span {
+            color: #ff3b30; font-size: 3rem; font-weight: 700; line-height: 1;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+        }
         .spotify-nota {
             width: 100%; font-size: 0.68rem; color: var(--text-dim); text-align: center;
             margin-top: 4px; line-height: 1.4;
@@ -125,15 +138,23 @@
         .f-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .f-badge { font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--bg-hover); color: var(--text-dim); text-transform: uppercase; }
         .f-badge.venta { background: var(--venta); color: #fff; }
+        .f-badge.vendido { background: #e53935; color: #fff; }
         .f-badge.fmt { background: #3d2f00; color: var(--accent); }
         .ficha-rows { margin-top: 14px; border-top: 1px solid var(--border); }
         .f-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
         .f-row .k { color: var(--text-dim); flex-shrink: 0; }
         .f-row .v { text-align: right; word-break: break-word; }
+        /* Fila doble: 2 pares etiqueta/valor en el mismo renglón (ahorra espacio) */
+        .f-row.duo { justify-content: flex-start; gap: 14px; }
+        .f-duo { flex: 1; min-width: 0; display: flex; justify-content: space-between; gap: 8px; }
+        .f-duo .k { color: var(--text-dim); flex-shrink: 0; }
+        .f-duo .v { text-align: right; word-break: break-word; min-width: 0; }
         .f-precio { margin-top: 14px; background: var(--bg); border: 1px solid var(--venta); border-radius: 12px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
         .f-precio .lbl { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; }
         .f-precio .usd { font-size: 1.2rem; font-weight: 700; color: var(--venta); }
         .f-precio .ars { font-size: 0.8rem; color: var(--text-dim); }
+        .f-precio.vendido { border-color: #e53935; }
+        .f-precio.vendido .usd { color: #e53935; }
         .f-notas { margin-top: 12px; font-size: 0.8rem; color: var(--text-dim); font-style: italic; line-height: 1.45; }
         .f-acciones { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
         .btn-consultar {
@@ -152,6 +173,12 @@
             text-decoration: none; font-weight: 600;
         }
         .btn-escuchar:hover { filter: brightness(1.08); }
+        .btn-youtube {
+            background: #ff0000; color: #fff; border: none;
+            padding: 13px 16px; border-radius: 12px; font-size: 0.85rem;
+            text-decoration: none; font-weight: 600;
+        }
+        .btn-youtube:hover { filter: brightness(1.08); }
         .btn-ia {
             background: var(--bg-hover); border: 1px solid var(--border); color: var(--text);
             padding: 13px 16px; border-radius: 12px; font-size: 0.85rem; text-decoration: none;
@@ -218,12 +245,6 @@
 
     <script>
         const GITHUB_USER = 'PabloByteOK';
-        const ESTADOS = {
-            'M': 'Mint', 'NM': 'Near Mint', 'NM-': 'Near Mint Minus', 'EX+': 'Excellent Plus',
-            'EX': 'Excellent', 'EX-': 'Excellent Minus', 'VG+': 'Very Good Plus',
-            'VG': 'Very Good', 'VG-': 'Very Good Minus', 'G+': 'Good Plus',
-            'G': 'Good', 'G-': 'Good Minus', 'F': 'Fair', 'P': 'Poor', 'X': 'Junk'
-        };
         const FORMATOS = { vinilo: 'Vinilo', cd: 'CD', cassette: 'Cassette', otro: 'Otro' };
 
         let catalogo = { discos: [], instagram: '' };
@@ -241,12 +262,20 @@
             return str.toLowerCase().split(' ').map((w, i) =>
                 (i === 0 || !arts.includes(w)) ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
         };
-        const estadoLargo = c => c ? (ESTADOS[c] ? c + ' — ' + ESTADOS[c] : c) : '';
+        // Escala Goldmine en la ficha: SOLO la inicial (VG, NM, EX...), sin texto largo
+        const estadoSolo = c => c || '';
         // Link de Spotify: exacto si el dueño lo cargó, si no búsqueda automática
         function spotifyDe(d) {
             const u = (d.spotifyUrl || '').trim();
             if (/^https:\/\/open\.spotify\.com\//.test(u)) return u;
             return 'https://open.spotify.com/search/' +
+                encodeURIComponent([d.artista, d.album].filter(Boolean).join(' '));
+        }
+        // Link de YouTube: exacto si el dueño lo cargó, si no búsqueda automática
+        function youtubeDe(d) {
+            const u = (d.youtubeUrl || '').trim();
+            if (/^https:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(u)) return u;
+            return 'https://www.youtube.com/results?search_query=' +
                 encodeURIComponent([d.artista, d.album].filter(Boolean).join(' '));
         }
         // Búsqueda en Modo IA de Google (udm=50) armada con los datos de la ficha
@@ -283,7 +312,7 @@
         function visibles() {
             let lista = catalogo.discos.slice();
             if (filtro === 'venta') {
-                lista = lista.filter(d => d.enVenta);
+                lista = lista.filter(d => d.enVenta && !d.vendido);
             } else if (filtro !== 'todos') {
                 lista = lista.filter(d => (d.formato || '') === filtro);
             }
@@ -330,7 +359,7 @@
 
         function render() {
             const total = catalogo.discos.length;
-            const enVenta = catalogo.discos.filter(d => d.enVenta).length;
+            const enVenta = catalogo.discos.filter(d => d.enVenta && !d.vendido).length;
             $('subtitulo').textContent = `${total} discos${enVenta ? ' · ' + enVenta + ' en venta' : ''}`;
             $('controles').style.display = '';
 
@@ -360,8 +389,11 @@
                         ${tapaHTML(d, 'ph')}
                         <div class="badges-top">
                             ${esReciente(d) ? '<span class="badge-nuevo">Recién agregado</span>' : ''}
-                            ${d.enVenta ? '<span class="badge-venta">En venta</span>' : ''}
+                            ${d.vendido
+                                ? '<span class="badge-vendido">Vendido</span>'
+                                : (d.enVenta ? '<span class="badge-venta">En venta</span>' : '')}
                         </div>
+                        ${d.vendido ? '<div class="cruz-vendido"><span>✕</span></div>' : ''}
                         <span class="badge-formato">${d.formato === 'cd' ? 'CD' : d.formato === 'vinilo' ? 'LP' : (d.formato || '')}</span>
                     </div>
                     <div class="c-tit">${esc(titleCase(d.album))}</div>
@@ -373,18 +405,19 @@
         function abrirFicha(idx) {
             const d = catalogo.discos[idx];
             if (!d) return;
+            // Cada fila acepta hasta 2 pares etiqueta/valor en el mismo
+            // renglón (p. ej. "Año lanz. / Mi edición") para ganar espacio.
+            // Si falta uno, se muestra solo el otro; si faltan los dos, no aparece.
             const filas = [
                 ['Formato', [FORMATOS[d.formato] || d.formato, d.formatoDetalle].filter(Boolean).join(' — ')],
-                ['Año lanzamiento', d.anio],
-                ['Año de mi edición', d.anioEdicion],
+                ['Año lanz.', d.anio, 'Mi edición', d.anioEdicion],
                 ['Sello', d.sello],
                 ['Género', d.genero],
-                ['Nº de catálogo', d.catalogo],
-                ['Matrix / Runout', d.runout],
+                ['Nº cat.', d.catalogo, 'Matriz', d.runout],
                 ['Barcode', d.barcode],
                 ['IFPI mastering', d.sidMastering],
                 ['IFPI molde', d.sidMould]
-            ].filter(([, v]) => v);
+            ].filter(f => f[1] || f[3]);
 
             let html = `
             <button class="btn-cerrar" onclick="cerrarFicha()">✕</button>
@@ -395,18 +428,34 @@
                     <h2>${esc(titleCase(d.album))}${d.anio ? ' (' + esc(d.anio) + ')' : ''}</h2>
                     <div class="f-badges">
                         <span class="f-badge fmt">${esc(FORMATOS[d.formato] || d.formato || '')}</span>
-                        ${d.enVenta ? '<span class="f-badge venta">En venta</span>' : ''}
+                        ${d.vendido
+                            ? '<span class="f-badge vendido">Vendido</span>'
+                            : (d.enVenta ? '<span class="f-badge venta">En venta</span>' : '')}
                         ${esReciente(d) ? '<span class="f-badge" style="background:var(--nuevo);color:#fff">Recién agregado</span>' : ''}
                     </div>
                 </div>
             </div>`;
 
-            if (d.enVenta) {
-                const condicion = [
-                    d.estado ? 'Disco: ' + estadoLargo(d.estado) : '',
-                    d.estadoTapa ? 'Tapa: ' + estadoLargo(d.estadoTapa) : '',
-                    d.tieneInsert === 'si' ? 'Con insert' : ''
-                ].filter(Boolean);
+            const condicion = [
+                d.estado ? 'Disco: ' + estadoSolo(d.estado) : '',
+                d.estadoTapa ? 'Tapa: ' + estadoSolo(d.estadoTapa) : '',
+                d.tieneInsert === 'si' ? 'Con insert' : ''
+            ].filter(Boolean);
+            const condHTML = condicion.length
+                ? `<div style="text-align:right;font-size:0.78rem;color:var(--text-dim)">${condicion.map(c => esc(c)).join('<br>')}</div>`
+                : '';
+
+            if (d.vendido) {
+                // Ya no está disponible: el aviso reemplaza al precio
+                html += `
+                <div class="f-precio vendido">
+                    <div>
+                        <div class="lbl">Disponibilidad</div>
+                        <div class="usd">VENDIDO</div>
+                    </div>
+                    ${condHTML}
+                </div>`;
+            } else if (d.enVenta) {
                 html += `
                 <div class="f-precio">
                     <div>
@@ -414,21 +463,40 @@
                         <div class="usd">${d.precioUsd ? 'US$ ' + esc(d.precioUsd) : 'A consultar'}</div>
                         ${d.precioArs ? '<div class="ars">≈ $' + Number(d.precioArs).toLocaleString('es-AR') + ' ARS</div>' : ''}
                     </div>
-                    <div style="text-align:right;font-size:0.78rem;color:var(--text-dim)">${condicion.map(c => esc(c)).join('<br>')}</div>
+                    ${condHTML}
                 </div>`;
             }
 
-            html += `<div class="ficha-rows">` + filas.map(([k, v]) =>
-                `<div class="f-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('') + `</div>`;
+            html += `<div class="ficha-rows">` + filas.map(f => {
+                const celdas = [[f[0], f[1]], (f.length > 3 ? [f[2], f[3]] : null)]
+                    .filter(c => c && c[1]);
+                if (celdas.length === 2) {
+                    return `<div class="f-row duo">` + celdas.map(([k, v]) =>
+                        `<div class="f-duo"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('') + `</div>`;
+                }
+                const [k, v] = celdas[0];
+                return `<div class="f-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`;
+            }).join('') + `</div>`;
 
             if (d.notas) {
                 html += `<div class="f-notas">“${esc(d.notas)}”</div>`;
             }
 
+            // Botones de escucha: solo se muestran los activados para ese disco
+            const verSpotify = d.mostrarSpotify !== false;
+            const verYouTube = d.mostrarYouTube === true;
+            const btnEscucha = [
+                verSpotify ? `<a class="btn-escuchar" href="${esc(spotifyDe(d))}" target="_blank" rel="noopener">▶ Escuchar en Spotify</a>` : '',
+                verYouTube ? `<a class="btn-youtube" href="${esc(youtubeDe(d))}" target="_blank" rel="noopener">▶ Ver en YouTube</a>` : ''
+            ].join('');
+            const notaEdicion = (verSpotify || verYouTube)
+                ? `<div class="spotify-nota">⚠️ La versión en Spotify o YouTube puede no ser exactamente esta edición (deluxe, reissue, etc.)</div>`
+                : '';
+
             html += `<div class="f-acciones">
-                <button class="btn-consultar" onclick="consultar(${idx})">💬 Consultar por este disco</button>
-                <a class="btn-escuchar" href="${esc(spotifyDe(d))}" target="_blank" rel="noopener">▶ Escuchar en Spotify</a>
-                <div class="spotify-nota">⚠️ La versión en Spotify puede no ser exactamente esta edición (deluxe, reissue, etc.)</div>
+                <button class="btn-consultar" onclick="consultar(${idx})" title="Se abre Instagram con la consulta lista para enviar">💬 Consultar por DM en Instagram</button>
+                ${btnEscucha}
+                ${notaEdicion}
                 <a class="btn-ia" href="${esc(infoIA(d))}" target="_blank" rel="noopener">🤖 Más info de este álbum</a>
                 ${d.discogsUrl ? `<a class="btn-discogs" href="${esc(d.discogsUrl)}" target="_blank" rel="noopener">Ver en Discogs ↗</a>` : ''}
             </div>`;
@@ -457,7 +525,7 @@
                 `¿Me pasás info de precio y envío? ¡Gracias!`;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(mensaje).then(() => {
-                    showToast('✅ Mensaje copiado — pegalo en Instagram');
+                    showToast('✅ Consulta copiada — pegala en el chat de Instagram');
                 }).catch(() => {});
             }
             // Abrir Instagram (DM si el navegador lo permite, si no el perfil)
