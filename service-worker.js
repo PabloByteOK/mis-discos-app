@@ -1,10 +1,10 @@
-const CACHE_NAME = 'mis-discos-v0.9.37';
+const CACHE_NAME = 'mis-discos-v0.9.38';
 const ASSETS = [
     './',
     './index.html',
-    './styles.css?v=0.9.37',
-    './app.js?v=0.9.37',
-    './catalogo.html?v=0.9.37',
+    './styles.css?v=0.9.38',
+    './app.js?v=0.9.38',
+    './catalogo.html?v=0.9.38',
     './manifest.json',
     './zxing-browser.min.js',
     './icon-192.png',

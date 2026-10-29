@@ -156,6 +156,13 @@
         .f-precio.vendido { border-color: #e53935; }
         .f-precio.vendido .usd { color: #e53935; }
         .f-notas { margin-top: 12px; font-size: 0.8rem; color: var(--text-dim); font-style: italic; line-height: 1.45; }
+        #consulta-texto {
+            width: 100%; margin-top: 12px; padding: 10px 12px;
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            color: var(--text); font-size: 0.88rem; font-family: inherit;
+            resize: none; line-height: 1.5;
+        }
+        #consulta-texto:focus { outline: none; border-color: var(--accent); }
         .f-acciones { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
         .btn-consultar {
             flex: 1; min-width: 200px; background: var(--accent); color: #111; border: none;
@@ -240,6 +247,17 @@
         <div class="ficha" id="ficha"></div>
     </div>
 
+    <!-- Caja de respaldo: muestra el mensaje si la copia automática falló -->
+    <div class="overlay hidden" id="consulta-overlay">
+        <div class="ficha">
+            <button class="btn-cerrar" onclick="cerrarConsulta()">✕</button>
+            <h2>Mensaje de consulta</h2>
+            <p class="f-notas" style="font-style:normal">No pude copiarlo automáticamente. Tocá el texto y copialo con el botón (o Ctrl+C):</p>
+            <textarea id="consulta-texto" readonly rows="4"></textarea>
+            <button class="btn-consultar" style="width:100%;margin-top:12px" onclick="copiarDeCaja()">📋 Copiar mensaje</button>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
     <div class="pie">Catálogo de colección personal · No es una tienda online</div>
 
@@ -288,18 +306,23 @@
 
         async function cargarCatalogo() {
             try {
-                // Buscar el Gist público que contiene catalogo.json
-                const resp = await fetch(`https://api.github.com/users/${GITHUB_USER}/gists?per_page=100`);
+                // Buscar el Gist público con catalogo.json. Hay copias
+                // duplicadas del catálogo: se elige la MÁS RECIENTEMENTE
+                // ACTUALIZADA, así la página siempre muestra lo último
+                // publicado sin importar en cuál copia haya publicado la app.
+                const resp = await fetch(`https://api.github.com/users/${GITHUB_USER}/gists?per_page=100`, { cache: 'no-store' });
                 if (!resp.ok) throw new Error('GitHub ' + resp.status);
                 const gists = await resp.json();
-                const catGist = gists.find(g => g.files && g.files['catalogo.json']);
+                const catGists = gists.filter(g => g.files && g.files['catalogo.json']);
+                catGists.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+                const catGist = catGists[0];
                 if (!catGist) {
                     $('subtitulo').textContent = 'Sin conexión con el catálogo';
                     $('oculto-mensaje').classList.remove('hidden');
                     return;
                 }
                 const rawUrl = catGist.files['catalogo.json'].raw_url;
-                const dataResp = await fetch(rawUrl);
+                const dataResp = await fetch(rawUrl, { cache: 'no-store' });
                 catalogo = await dataResp.json();
                 render();
             } catch (e) {
@@ -511,26 +534,70 @@
             document.body.style.overflow = '';
         }
         $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) cerrarFicha(); });
+        $('consulta-overlay').addEventListener('click', e => { if (e.target === $('consulta-overlay')) cerrarConsulta(); });
 
         function consultar(idx) {
             const d = catalogo.discos[idx];
             if (!d) return;
             const ig = catalogo.instagram || '';
-            const partes = [
-                d.artista ? titleCase(d.artista) : '',
-                titleCase(d.album),
-                [FORMATOS[d.formato] || d.formato, d.anio].filter(Boolean).join(', ')
-            ].filter(Boolean);
-            const mensaje = `¡Hola! Vi en tu catálogo: ${partes.join(' - ')}. ` +
-                `¿Me pasás info de precio y envío? ¡Gracias!`;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(mensaje).then(() => {
-                    showToast('✅ Consulta copiada — pegala en el chat de Instagram');
-                }).catch(() => {});
-            }
-            // Abrir Instagram (DM si el navegador lo permite, si no el perfil)
+            const discoTxt = (d.artista ? titleCase(d.artista) : '') +
+                (d.artista && d.album ? ' - ' : '') + titleCase(d.album);
+            const extra = [FORMATOS[d.formato] || d.formato, d.anio].filter(Boolean).join(', ');
+            const mensaje = `Hola! Quiero consultarte por este disco "${discoTxt}"` +
+                `${extra ? ' (' + extra + ')' : ''}. ¿Me pasás info de precio y envío? ¡Gracias!`;
+
+            // 1) Copiar ANTES de abrir (con el foco y el gesto del usuario)
+            const okP = copiarTexto(mensaje);
+            // 2) Abrir Instagram (DM si el navegador lo permite, si no el perfil)
             const url = ig ? `https://ig.me/m/${ig.replace(/^@/, '')}` : 'https://instagram.com';
             window.open(url, '_blank', 'noopener');
+            // 3) Feedback: si no se pudo copiar, se muestra la caja con el mensaje
+            Promise.resolve(okP).then(ok => {
+                if (ok) {
+                    showToast('✅ Mensaje copiado — pegalo en el chat');
+                } else {
+                    mostrarConsulta(mensaje);
+                    showToast('⚠️ No pude copiar — copiá el mensaje de la caja');
+                }
+            });
+        }
+
+        // Copia al portapapeles: primero execCommand (síncrono, funciona
+        // también en http y en archivo local), después Clipboard API
+        function copiarTexto(txt) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = txt;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                const ok = document.execCommand('copy');
+                ta.remove();
+                if (ok) return true;
+            } catch (e) { /* probamos el siguiente método */ }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(txt).then(() => true).catch(() => false);
+            }
+            return false;
+        }
+
+        // Si la copia automática falla, caja visible con el mensaje
+        function mostrarConsulta(mensaje) {
+            $('consulta-texto').value = mensaje;
+            $('consulta-overlay').classList.remove('hidden');
+        }
+        function cerrarConsulta() {
+            $('consulta-overlay').classList.add('hidden');
+        }
+        function copiarDeCaja() {
+            const ta = $('consulta-texto');
+            ta.focus();
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) {}
+            showToast(ok ? '✅ Mensaje copiado' : 'Seleccioná el texto y copialo con Ctrl+C');
         }
 
         function showToast(msg) {
