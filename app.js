@@ -2381,6 +2381,20 @@ document.getElementById('btn-export-json').addEventListener('click', () => {
     descargarArchivo(dataStr, `mis-discos-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
 });
 
+// Copiar URL del catálogo público
+document.getElementById('btn-copy-catalog-url').addEventListener('click', () => {
+    const url = 'https://pablobyteok.github.io/mis-discos-app/catalogo.html';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('URL del catálogo copiada:\n\n' + url);
+        }).catch(() => {
+            prompt('Copiá la URL del catálogo:', url);
+        });
+    } else {
+        prompt('Copiá la URL del catálogo:', url);
+    }
+});
+
 // XML
 document.getElementById('btn-export-xml').addEventListener('click', () => {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<coleccion discos="' + discos.length + '">\n';
