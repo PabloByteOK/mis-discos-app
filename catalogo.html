@@ -77,19 +77,28 @@
             width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px;
             background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 2.4rem;
         }
+        .badges-top {
+            position: absolute; top: 6px; left: 6px; right: 6px;
+            display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+            pointer-events: none;
+        }
         .badge-nuevo {
-            position: absolute; top: 6px; left: 6px; background: var(--nuevo); color: #fff;
+            background: var(--nuevo); color: #fff;
             font-size: 0.55rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
-            max-width: 75px; text-align: center; line-height: 1.2;
+            max-width: 100%; text-align: center; line-height: 1.2;
+        }
+        .badge-venta {
+            background: var(--venta); color: #fff;
+            font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
         }
         .badge-formato {
             position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.75); color: #fff;
             font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .badge-venta {
-            position: absolute; top: 6px; right: 6px; background: var(--venta); color: #fff;
-            font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
+        .spotify-nota {
+            width: 100%; font-size: 0.68rem; color: var(--text-dim); text-align: center;
+            margin-top: 4px; line-height: 1.4;
         }
         .card .c-tit { font-size: 0.78rem; font-weight: 600; margin-top: 6px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .card .c-sub { font-size: 0.68rem; color: var(--text-dim); margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -312,14 +321,21 @@
             }
         }
 
+        // "Recién agregado" solo por 5 días desde fechaAgregado
+        function esReciente(d) {
+            if (!d.fechaAgregado) return false;
+            const diff = Date.now() - new Date(d.fechaAgregado).getTime();
+            return diff >= 0 && diff < 5 * 24 * 3600 * 1000;
+        }
+
         function render() {
             const total = catalogo.discos.length;
             const enVenta = catalogo.discos.filter(d => d.enVenta).length;
             $('subtitulo').textContent = `${total} discos${enVenta ? ' · ' + enVenta + ' en venta' : ''}`;
             $('controles').style.display = '';
 
-            // Recientes (con flag nuevo)
-            const recientes = catalogo.discos.filter(d => d.nuevo).slice(0, 12);
+            // Recientes (solo últimos 5 días)
+            const recientes = catalogo.discos.filter(d => esReciente(d)).slice(0, 12);
             if (recientes.length > 0) {
                 $('recientes-seccion').style.display = '';
                 $('recientes').innerHTML = recientes.map((d, i) => `
@@ -342,8 +358,10 @@
                 <div class="card" onclick="abrirFicha(${idx})">
                     <div class="tapaco">
                         ${tapaHTML(d, 'ph')}
-                        ${d.nuevo ? '<span class="badge-nuevo">Recién agregado</span>' : ''}
-                        ${d.enVenta ? '<span class="badge-venta">En venta</span>' : ''}
+                        <div class="badges-top">
+                            ${esReciente(d) ? '<span class="badge-nuevo">Recién agregado</span>' : ''}
+                            ${d.enVenta ? '<span class="badge-venta">En venta</span>' : ''}
+                        </div>
                         <span class="badge-formato">${d.formato === 'cd' ? 'CD' : d.formato === 'vinilo' ? 'LP' : (d.formato || '')}</span>
                     </div>
                     <div class="c-tit">${esc(titleCase(d.album))}</div>
@@ -378,7 +396,7 @@
                     <div class="f-badges">
                         <span class="f-badge fmt">${esc(FORMATOS[d.formato] || d.formato || '')}</span>
                         ${d.enVenta ? '<span class="f-badge venta">En venta</span>' : ''}
-                        ${d.nuevo ? '<span class="f-badge" style="background:var(--nuevo);color:#fff">Recién agregado</span>' : ''}
+                        ${esReciente(d) ? '<span class="f-badge" style="background:var(--nuevo);color:#fff">Recién agregado</span>' : ''}
                     </div>
                 </div>
             </div>`;
@@ -410,6 +428,7 @@
             html += `<div class="f-acciones">
                 <button class="btn-consultar" onclick="consultar(${idx})">💬 Consultar por este disco</button>
                 <a class="btn-escuchar" href="${esc(spotifyDe(d))}" target="_blank" rel="noopener">▶ Escuchar en Spotify</a>
+                <div class="spotify-nota">⚠️ La versión en Spotify puede no ser exactamente esta edición (deluxe, reissue, etc.)</div>
                 <a class="btn-ia" href="${esc(infoIA(d))}" target="_blank" rel="noopener">🤖 Más info de este álbum</a>
                 ${d.discogsUrl ? `<a class="btn-discogs" href="${esc(d.discogsUrl)}" target="_blank" rel="noopener">Ver en Discogs ↗</a>` : ''}
             </div>`;
