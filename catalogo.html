@@ -163,6 +163,13 @@
             resize: none; line-height: 1.5;
         }
         #consulta-texto:focus { outline: none; border-color: var(--accent); }
+        .dm-paso { margin-top: 10px; font-size: 0.85rem; color: var(--text-dim); line-height: 1.45; }
+        .dm-paso strong { color: var(--text); }
+        .dm-warn {
+            margin-top: 10px; font-size: 0.8rem; color: #ff6b6b; line-height: 1.45;
+            background: rgba(229,57,53,0.1); border: 1px solid #e53935;
+            border-radius: 10px; padding: 8px 10px;
+        }
         .f-acciones { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
         .btn-consultar {
             flex: 1; min-width: 200px; background: var(--accent); color: #111; border: none;
@@ -247,14 +254,16 @@
         <div class="ficha" id="ficha"></div>
     </div>
 
-    <!-- Caja de respaldo: muestra el mensaje si la copia automática falló -->
+    <!-- Tarjeta DM: el cliente ve el mensaje y las instrucciones ANTES de ir al chat -->
     <div class="overlay hidden" id="consulta-overlay">
         <div class="ficha">
             <button class="btn-cerrar" onclick="cerrarConsulta()">✕</button>
-            <h2>Mensaje de consulta</h2>
-            <p class="f-notas" style="font-style:normal">No pude copiarlo automáticamente. Tocá el texto y copialo con el botón (o Ctrl+C):</p>
+            <h2>💬 Consultar por DM</h2>
+            <p class="dm-paso"><strong>1.</strong> Tocá el botón de abajo: <strong>el mensaje se copia solo</strong> y se abre tu chat de Instagram.</p>
+            <p class="dm-paso"><strong>2.</strong> En el chat, tocá el campo de texto y <strong>pegá</strong> (toque largo → Pegar). No escribís nada.</p>
             <textarea id="consulta-texto" readonly rows="4"></textarea>
-            <button class="btn-consultar" style="width:100%;margin-top:12px" onclick="copiarDeCaja()">📋 Copiar mensaje</button>
+            <div class="dm-warn hidden" id="dm-advertencia">⚠️ No pude copiarlo automáticamente. Seleccioná el texto de arriba y copialo (toque largo → Copiar) antes de abrir el chat.</div>
+            <button class="btn-consultar" style="width:100%;margin-top:12px" onclick="abrirDM()">📋 Copiar y abrir el chat</button>
         </div>
     </div>
 
@@ -517,7 +526,7 @@
                 : '';
 
             html += `<div class="f-acciones">
-                <button class="btn-consultar" onclick="consultar(${idx})" title="Se abre Instagram con la consulta lista para enviar">💬 Consultar por DM en Instagram</button>
+                <button class="btn-consultar" onclick="consultar(${idx})" title="Te copia el mensaje y abre el chat de Instagram">💬 Consultar por DM en Instagram</button>
                 ${btnEscucha}
                 ${notaEdicion}
                 <a class="btn-ia" href="${esc(infoIA(d))}" target="_blank" rel="noopener">🤖 Más info de este álbum</a>
@@ -536,6 +545,12 @@
         $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) cerrarFicha(); });
         $('consulta-overlay').addEventListener('click', e => { if (e.target === $('consulta-overlay')) cerrarConsulta(); });
 
+        // Consulta por DM: en vez de saltar directo al chat, se muestra
+        // la tarjeta con el mensaje y las instrucciones, para que el
+        // posible cliente sepa que el texto ya está copiado y solo tiene
+        // que pegarlo. (Instagram no permite precargar texto por URL.)
+        let dmMensaje = '';
+        let dmUrl = '';
         function consultar(idx) {
             const d = catalogo.discos[idx];
             if (!d) return;
@@ -545,27 +560,37 @@
             // Mensaje corto: solo saludo + disco + formato (sin año ni
             // precio: esa info ya está en la ficha del catálogo)
             const fmt = FORMATOS[d.formato] || d.formato || '';
-            const mensaje = `Hola! Quiero consultarte por este disco "${discoTxt}"` +
+            dmMensaje = `Hola! Quiero consultarte por este disco "${discoTxt}"` +
                 `${fmt ? ' (' + fmt + ')' : ''}`;
-
-            // 1) Copiar ANTES de abrir (con el foco y el gesto del usuario):
-            //    respaldo por si la app de Instagram ignora el texto precargado
-            const okP = copiarTexto(mensaje);
-            // 2) Abrir el DM con el mensaje PRECARGADO (?text=): en las versiones
-            //    de Instagram que lo admiten, el texto aparece solo en el chat y
-            //    el cliente solo tiene que mandar
             const base = ig ? `https://ig.me/m/${ig.replace(/^@/, '')}` : 'https://instagram.com';
-            const url = ig ? `${base}?text=${encodeURIComponent(mensaje)}` : base;
-            window.open(url, '_blank', 'noopener');
-            // 3) Feedback: si no se pudo copiar, se muestra la caja con el mensaje
-            Promise.resolve(okP).then(ok => {
-                if (ok) {
-                    showToast('✅ Mensaje listo — si no aparece solo en el chat, pegalo');
-                } else {
-                    mostrarConsulta(mensaje);
-                    showToast('⚠️ No pude copiar — copiá el mensaje de la caja');
-                }
-            });
+            dmUrl = ig ? `${base}?text=${encodeURIComponent(dmMensaje)}` : base;
+            $('consulta-texto').value = dmMensaje;
+            $('dm-advertencia').classList.add('hidden');
+            $('consulta-overlay').classList.remove('hidden');
+        }
+
+        // Botón de la tarjeta: copia el mensaje y abre el chat
+        function abrirDM() {
+            const ok = copiarTexto(dmMensaje);
+            const abrir = () => {
+                $('consulta-overlay').classList.add('hidden');
+                window.open(dmUrl, '_blank', 'noopener');
+                showToast('✅ Mensaje copiado — pegalo en el chat');
+            };
+            const falla = () => {
+                const ta = $('consulta-texto');
+                ta.focus();
+                ta.select();
+                $('dm-advertencia').classList.remove('hidden');
+                showToast('⚠️ No pude copiar — copiá el texto de la tarjeta');
+            };
+            if (ok === true) {
+                abrir(); // síncrono: mantiene el gesto del usuario para window.open
+            } else if (ok && typeof ok.then === 'function') {
+                ok.then(o => o ? abrir() : falla());
+            } else {
+                falla();
+            }
         }
 
         // Copia al portapapeles: primero execCommand (síncrono, funciona
@@ -589,21 +614,8 @@
             return false;
         }
 
-        // Si la copia automática falla, caja visible con el mensaje
-        function mostrarConsulta(mensaje) {
-            $('consulta-texto').value = mensaje;
-            $('consulta-overlay').classList.remove('hidden');
-        }
         function cerrarConsulta() {
             $('consulta-overlay').classList.add('hidden');
-        }
-        function copiarDeCaja() {
-            const ta = $('consulta-texto');
-            ta.focus();
-            ta.select();
-            let ok = false;
-            try { ok = document.execCommand('copy'); } catch (e) {}
-            showToast(ok ? '✅ Mensaje copiado' : 'Seleccioná el texto y copialo con Ctrl+C');
         }
 
         function showToast(msg) {
