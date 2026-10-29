@@ -3200,6 +3200,20 @@ async function publicarCatalogo() {
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ files: { 'catalogo.json': { content: payload } } })
             });
+            // Si el Gist guardado ya no existe (404), borrar el ID
+            // viejo y crear uno nuevo
+            if (resp.status === 404) {
+                localStorage.removeItem(CAT_GIST_KEY);
+                resp = await fetch('https://api.github.com/gists', {
+                    method: 'POST',
+                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        description: 'Catálogo público de discos',
+                        public: true,
+                        files: { 'catalogo.json': { content: payload } }
+                    })
+                });
+            }
         } else {
             resp = await fetch('https://api.github.com/gists', {
                 method: 'POST',
@@ -3241,12 +3255,15 @@ async function publicarCatalogo() {
         // 3) Si aparecieron tapas nuevas, se vuelve a publicar solo
         if (encontradas > 0) {
             updateCatalogStatus(`Actualizando catálogo con ${encontradas} tapa(s) nueva(s)...`, 'ok');
-            const resp2 = await fetch(`https://api.github.com/gists/${getCatalogConfig().gistId}`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ files: { 'catalogo.json': { content: construirCatalogoJSON() } } })
-            });
-            if (!resp2.ok) throw new Error(`GitHub ${resp2.status}`);
+            const actualGistId = getCatalogConfig().gistId;
+            if (actualGistId) {
+                const resp2 = await fetch(`https://api.github.com/gists/${actualGistId}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: { 'catalogo.json': { content: construirCatalogoJSON() } } })
+                });
+                if (!resp2.ok && resp2.status !== 404) throw new Error(`GitHub ${resp2.status}`);
+            }
         }
 
         // 4) Status honesto: si quedaron discos sin imagen, avisa con el
