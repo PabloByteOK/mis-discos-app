@@ -822,6 +822,175 @@ async function fetchDiscogs(endpoint) {
     return response.json();
 }
 
+// ============================================
+// TRACKLIST (canciones) — prioridad:
+//   1) Discogs (la edición exacta o búsqueda artista+álbum)
+//   2) Wikipedia (es → en, sección "Track listing")
+//   3) carga manual en el textarea del modal
+// ============================================
+async function tracklistDeDiscogs(datos) {
+    const dToken = localStorage.getItem('discogs_token') || '';
+    const pedir = (path) => fetch(`https://api.discogs.com/${path}${dToken ? '?token=' + dToken : ''}`, {
+        headers: { 'User-Agent': 'MisDiscosApp/1.0' }
+    });
+    const aLineas = (tracklist) => (tracklist || [])
+        .filter(t => t && t.title)
+        .map(t => `${t.position ? t.position + '. ' : ''}${t.title}` +
+            `${t.duration ? ' · ' + t.duration : ''}`)
+        .slice(0, 40);
+    const deData = (data) => {
+        const lineas = aLineas(data && data.tracklist);
+        return lineas.length >= 2 ? { lineas, fuente: 'Discogs' } : null;
+    };
+
+    // 1a) La edición guardada en el disco (link o id)
+    let info = datos.discogsUrl ? extraerIdDiscogs(datos.discogsUrl) : null;
+    if (!info && datos.discogsId) info = { tipo: 'release', id: String(datos.discogsId) };
+    if (info) {
+        try {
+            const resp = await pedir(`${info.tipo === 'master' ? 'masters' : 'releases'}/${info.id}`);
+            if (resp.ok) {
+                const r = deData(await resp.json());
+                if (r) return r;
+            }
+        } catch (e) { /* sin conexión: sigue con la búsqueda */ }
+    }
+
+    // 1b) Búsqueda por artista + álbum (solo si el título coincide)
+    if (datos.artista && datos.album) {
+        try {
+            const p = new URLSearchParams({
+                type: 'release', artist: datos.artista,
+                release_title: datos.album, per_page: '5'
+            });
+            if (dToken) p.set('token', dToken);
+            const resp = await fetch(`https://api.discogs.com/database/search?${p.toString()}`, {
+                headers: { 'User-Agent': 'MisDiscosApp/1.0' }
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                const norm = s => (s || '').toLowerCase().normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+                const alb = norm(datos.album);
+                const hit = (data.results || []).find(r => {
+                    const partes = String(r.title || '').split(' - ');
+                    const tit = norm(partes.length > 1 ? partes.slice(1).join(' - ') : r.title);
+                    return tit && alb && (tit.includes(alb) || alb.includes(tit));
+                });
+                if (hit && /^\d+$/.test(String(hit.id))) {
+                    const r2 = await pedir(`releases/${hit.id}`);
+                    if (r2.ok) {
+                        const r = deData(await r2.json());
+                        if (r) return r;
+                    }
+                }
+            }
+        } catch (e) { /* sin conexión o rate limit */ }
+    }
+    return null;
+}
+
+async function tracklistDeWikipedia(datos) {
+    if (!datos.artista && !datos.album) return null;
+    const norm = s => (s || '').toLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const alb = norm(datos.album);
+    const busquedas = [
+        [datos.album, datos.artista].filter(Boolean).join(' '),
+        `${datos.album || ''} (álbum) ${datos.artista || ''}`.trim()
+    ];
+    for (const q of busquedas) {
+        for (const lang of ['es', 'en']) {
+            try {
+                const su = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json` +
+                    `&origin=*&generator=search&gsrsearch=${encodeURIComponent(q)}` +
+                    `&gsrlimit=3&redirects=1`;
+                const sResp = await fetch(su);
+                if (!sResp.ok) continue;
+                const sData = await sResp.json();
+                const pages = sData && sData.query && sData.query.pages;
+                if (!pages) continue;
+                for (const page of Object.values(pages)) {
+                    const tit = norm(page.title);
+                    const relacionado = !alb || alb.length < 4 || tit.includes(alb) ||
+                        alb.includes(tit) || alb.split(' ').some(p => p.length >= 4 && tit.includes(p));
+                    if (!relacionado) continue;
+                    const pu = `https://${lang}.wikipedia.org/w/api.php?action=parse` +
+                        `&format=json&origin=*&prop=text&page=${encodeURIComponent(page.title)}`;
+                    const pResp = await fetch(pu);
+                    if (!pResp.ok) continue;
+                    const pData = await pResp.json();
+                    const html = pData && pData.parse && pData.parse.text && pData.parse.text['*'];
+                    if (!html) continue;
+                    const lineas = extraerTracklistHTML(html);
+                    if (lineas.length >= 3) return { lineas, fuente: `Wikipedia (${lang})` };
+                }
+            } catch (e) { /* pasa a la siguiente */ }
+        }
+    }
+    return null;
+}
+
+// Extrae la sección "Track listing" / "Lista de canciones" del HTML de
+// un artículo de Wikipedia hasta el próximo título de nivel igual o
+// superior. Soporta las dos formas reales de Wikipedia: listas ol/ul y
+// tablas (table.tracklist, con lados A/B del vinilo). Los títulos van
+// envueltos en <div class="mw-heading">, así que se arranca desde ahí.
+function extraerTracklistHTML(html) {
+    try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const heads = Array.from(doc.querySelectorAll('h2,h3'));
+        const h = heads.find(x => /track listing|lista de canciones|lista de temas|tracklist/i.test(x.textContent));
+        if (!h) return [];
+        const nivel = h.tagName === 'H2' ? 2 : 3;
+        const inicio = (h.parentElement && h.parentElement.tagName === 'DIV' &&
+            /mw-heading/.test(h.parentElement.className)) ? h.parentElement : h;
+        const lineas = [];
+        const aTexto = s => (s || '').replace(/\[\d{1,3}\]/g, '').replace(/\s+/g, ' ').trim();
+        const esPos = s => /^([A-Za-z]{0,2}\d+[A-Za-z]?)\.?$/.test(s);
+        let el = inicio.nextElementSibling;
+        while (el) {
+            // Próximo título (directo o envuelto en mw-heading)
+            const hd = /^H[1-3]$/.test(el.tagName) ? el
+                : (el.tagName === 'DIV' && /mw-heading/.test(el.className || '')
+                    ? el.querySelector('h1,h2,h3') : null);
+            if (hd && Number(hd.tagName[1]) <= nivel) break;
+            // Párrafo de cierre (ej: "Notes") una vez cargadas pistas:
+            // evita colar la lista de notas que viene después
+            if (lineas.length && el.tagName === 'P') break;
+            // Tablas (lados del vinilo, encabezados, duraciones)
+            const tabla = /^TABLE$/.test(el.tagName) ? el : el.querySelector('table');
+            if (tabla) {
+                tabla.querySelectorAll('tr').forEach(tr => {
+                    const celdas = Array.from(tr.querySelectorAll('th,td')).map(c => aTexto(c.textContent));
+                    if (celdas.length < 2) return;
+                    // Fila de encabezado (No. / Title / Length...)
+                    if (/^(no\.?|#|n\.?°|n\.?º|pista|track|title|título)$/i.test(celdas[0])) return;
+                    let pos = '', tit, dur = '';
+                    if (esPos(celdas[0])) { pos = celdas[0].replace(/\.$/, ''); tit = celdas[1]; }
+                    else { tit = celdas[0]; }
+                    const ult = celdas[celdas.length - 1];
+                    if (ult !== tit && /^\d{1,2}:\d{2}/.test(ult)) dur = ult;
+                    tit = (tit || '').replace(/^"+|"+$/g, '');
+                    if (tit && tit.length < 200) {
+                        lineas.push((pos ? pos + '. ' : '') + tit + (dur ? ' · ' + dur : ''));
+                    }
+                });
+            }
+            // Listas ol/ul (algunos artículos usan listas en vez de tabla)
+            const lista = /^OL$|^UL$/.test(el.tagName) ? el : el.querySelector('ol,ul');
+            if (lista) {
+                lista.querySelectorAll('li').forEach(li => {
+                    const t = aTexto(li.textContent);
+                    if (t && t.length < 200) lineas.push(t);
+                });
+            }
+            el = el.nextElementSibling;
+        }
+        return lineas.slice(0, 40);
+    } catch (e) { return []; }
+}
+
 async function buscarEnDiscogs(url) {
     const info = extraerIdDiscogs(url);
     if (!info) {
@@ -1108,6 +1277,7 @@ function renderColeccion(filtro) {
                     </div>
                 </div>
                 ${precioColumna(disco)}
+                ${disco.canciones ? `<button class="disco-delete-btn" style="color:#e6b800;opacity:0.85;font-size:0.85rem" onclick="event.stopPropagation(); verCanciones('${disco.id}')" title="Ver canciones">🎵</button>` : ''}
                 <button class="disco-delete-btn" onclick="event.stopPropagation(); eliminarDisco('${disco.id}')" title="Eliminar">✕</button>
             </div>
         `;
@@ -1308,6 +1478,15 @@ function editarDisco(id) {
                 <div class="form-group">
                     <label>Notas / Dato curioso</label>
                     <textarea id="edit-notas">${disco.notas || ''}</textarea>
+                </div>
+                <div class="form-section-label">Canciones (tracklist)</div>
+                <div class="form-group">
+                    <textarea id="edit-canciones" rows="6" placeholder="Una canción por línea. Ej: A1. Tema · 3:22">${disco.canciones || ''}</textarea>
+                    <small id="canciones-estado">Traé la lista de Discogs o Wikipedia, o cargala a mano.</small>
+                </div>
+                <div class="tapa-buttons" style="justify-content:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                    <button type="button" class="btn-secondary tapa-btn" id="edit-traer-canciones">🎵 Traer tracklist</button>
+                    <label class="check-row"><input type="checkbox" id="edit-mostrar-canciones" ${disco.mostrarCanciones !== false ? 'checked' : ''}> Mostrar en el catálogo</label>
                 </div>
                 <div class="form-section-label">Datos de edición (Discogs)</div>
                 <div class="form-row">
@@ -1527,6 +1706,51 @@ function editarDisco(id) {
         });
     }
 
+    // Tracklist: prioridad Discogs -> Wikipedia -> manual
+    const btnTraerCanciones = modal.querySelector('#edit-traer-canciones');
+    if (btnTraerCanciones) {
+        btnTraerCanciones.addEventListener('click', async () => {
+            const estado = modal.querySelector('#canciones-estado');
+            const ta = modal.querySelector('#edit-canciones');
+            if (ta.value.trim() &&
+                !confirm('Ya hay canciones cargadas en este disco. ¿Reemplazarlas con las nuevas?')) return;
+            const original = btnTraerCanciones.textContent;
+            btnTraerCanciones.disabled = true;
+            btnTraerCanciones.textContent = '⏳ Buscando…';
+            const datos = {
+                artista: modal.querySelector('#edit-artista').value.trim(),
+                album: modal.querySelector('#edit-album').value.trim(),
+                discogsUrl: modal.querySelector('#edit-discogs-url')
+                    ? modal.querySelector('#edit-discogs-url').value.trim() : '',
+                discogsId: ''
+            };
+            try {
+                if (estado) estado.textContent = '🎵 Buscando el tracklist en Discogs…';
+                let res = await tracklistDeDiscogs(datos);
+                if (!res) {
+                    if (estado) estado.textContent = '📚 Discogs sin suerte — probando Wikipedia…';
+                    res = await tracklistDeWikipedia(datos);
+                }
+                if (res && res.lineas.length) {
+                    ta.value = res.lineas.join('\n');
+                    if (estado) {
+                        estado.textContent =
+                            `✅ ${res.lineas.length} canciones (fuente: ${res.fuente}) — editable`;
+                    }
+                } else if (estado) {
+                    estado.textContent =
+                        '⚠️ No se encontró el tracklist — cargalo a mano (una canción por línea).';
+                }
+            } catch (e) {
+                if (estado) {
+                    estado.textContent = '⚠️ Error de conexión — cargalo a mano (una canción por línea).';
+                }
+            }
+            btnTraerCanciones.disabled = false;
+            btnTraerCanciones.textContent = original;
+        });
+    }
+
     modal.querySelector('#modal-save').addEventListener('click', () => {
         disco.artista = modal.querySelector('#edit-artista').value.trim();
         disco.album = modal.querySelector('#edit-album').value.trim();
@@ -1559,6 +1783,9 @@ function editarDisco(id) {
         disco.cotizacionBlue = disco.cotizacionBlue || cotizacionBlue || '';
         disco.notas = modal.querySelector('#edit-notas').value.trim();
         disco.resena = modal.querySelector('#edit-resena').value.trim();
+        disco.canciones = (modal.querySelector('#edit-canciones').value || '')
+            .replace(/\r\n/g, '\n').trim();
+        disco.mostrarCanciones = modal.querySelector('#edit-mostrar-canciones').checked;
         disco.tapa = editTapaUrl || '';
 
         if (!disco.artista || !disco.album || !disco.fecha) {
@@ -1585,6 +1812,36 @@ function copiarResena(id) {
         btn.textContent = 'Copiado!';
         setTimeout(() => btn.textContent = 'Copiar', 1500);
     });
+}
+
+// Visor de canciones desde la lista de la app (solo lectura)
+function verCanciones(id) {
+    const d = discos.find(x => x.id === id);
+    if (!d || !d.canciones) return;
+    const escH = s => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    const lineas = d.canciones.split('\n').map(s => s.trim()).filter(Boolean);
+    const filas = lineas.map((l, i) => {
+        const m = l.match(/^([A-Za-z]{0,2}\d+[A-Za-z]?)\.?\s+(.+)$/);
+        const pref = m ? m[1] : String(i + 1);
+        const tit = m ? m[2] : l;
+        return `<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.88rem">
+            <span style="color:#e6b800;font-weight:700;min-width:32px;text-align:right;flex-shrink:0">${escH(pref)}</span>
+            <span>${escH(tit)}</span></div>`;
+    }).join('');
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.innerHTML = `<div class="modal" style="max-width:440px">
+        <div class="modal-header">
+            <h3>🎵 ${titleCase(d.album)} — canciones</h3>
+            <button class="modal-close" id="vc-close">&times;</button>
+        </div>
+        <div class="modal-body">${filas}</div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#vc-close').addEventListener('click', () => ov.remove());
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
 }
 
 function limpiarFormulario() {
@@ -2729,11 +2986,11 @@ function mergeDiscos(local, gist) {
             byKey.set(key, d);
             if (d.id) seenIds.add(d.id);
         } else {
-            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'tapaUrl', 'catOculto', 'spotifyUrl', 'youtubeUrl', 'enVenta', 'vendido', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena']) {
+            for (const f of ['discogsUrl', 'discogsId', 'fecha', 'anioEdicion', 'fechaAprox', 'edicionAprox', 'sello', 'genero', 'formatoDetalle', 'runout', 'catalogo', 'barcode', 'sidMastering', 'sidMould', 'notas', 'tapa', 'tapaUrl', 'catOculto', 'spotifyUrl', 'youtubeUrl', 'enVenta', 'vendido', 'precioUsd', 'cotizacionBlue', 'estado', 'estadoTapa', 'tieneInsert', 'resena', 'canciones']) {
                 if (!existing[f] && d[f]) existing[f] = d[f];
             }
             // Flags booleanos: copiar aunque el valor sea false/true explícito
-            for (const f of ['mostrarSpotify', 'mostrarYouTube']) {
+            for (const f of ['mostrarSpotify', 'mostrarYouTube', 'mostrarCanciones']) {
                 if (existing[f] === undefined && d[f] !== undefined) existing[f] = d[f];
             }
             if (!existing.formato && d.formato) existing.formato = d.formato;
@@ -3071,6 +3328,11 @@ function construirCatalogoJSON() {
                 obj.estado = d.estado || '';
                 obj.estadoTapa = d.estadoTapa || '';
                 obj.tieneInsert = d.tieneInsert || '';
+            }
+            // Tracklist: solo viaja si hay canciones cargadas
+            if (d.canciones && d.canciones.trim()) {
+                obj.canciones = d.canciones;
+                obj.mostrarCanciones = d.mostrarCanciones !== false;
             }
             if (d.fechaAgregado && (hoy - new Date(d.fechaAgregado).getTime()) < 30 * 24 * 3600 * 1000) {
                 obj.nuevo = true;
