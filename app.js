@@ -1189,6 +1189,12 @@ function precioColumna(disco) {
     </div>`;
 }
 
+// Valor numérico del precio propio (USD); null si el disco no tiene precio
+function precioValor(d) {
+    const v = parseFloat(d && d.precioUsd);
+    return isNaN(v) ? null : v;
+}
+
 function renderColeccion(filtro) {
     if (filtro) currentFilter = filtro;
     let discosFiltrados = [...discos];
@@ -1238,6 +1244,20 @@ function renderColeccion(filtro) {
         case 'anio':
             discosFiltrados.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
             break;
+        case 'precio-asc':
+        case 'precio-desc': {
+            // Precio propio (USD): los discos sin precio quedan al final
+            // en ambos sentidos, para no mezclarlos con los que tienen
+            const asc = currentSort === 'precio-asc';
+            discosFiltrados.sort((a, b) => {
+                const pa = precioValor(a), pb = precioValor(b);
+                if (pa === null && pb === null) return 0;
+                if (pa === null) return 1;
+                if (pb === null) return -1;
+                return asc ? pa - pb : pb - pa;
+            });
+            break;
+        }
     }
     
     if (discosFiltrados.length === 0) {
@@ -1262,6 +1282,7 @@ function renderColeccion(filtro) {
                 <div class="disco-info">
                     <div class="disco-title-row">
                         <h3>${titleCase(disco.album)}</h3>
+                        ${disco.canciones ? `<button style="flex-shrink:0;border:1px solid #e6b800;color:#e6b800;background:rgba(230,184,0,0.10);font-size:0.6rem;font-weight:700;padding:2px 7px;border-radius:999px;cursor:pointer;letter-spacing:0.03em;white-space:nowrap" onclick="event.stopPropagation(); verCanciones('${disco.id}')" title="Ver tracklist">📋 Tracklist</button>` : ''}
                         <span class="formato-badge ${disco.formato}">${disco.formato}</span>
                     </div>
                     <div class="artista">${titleCase(disco.artista)}</div>
@@ -1277,7 +1298,6 @@ function renderColeccion(filtro) {
                     </div>
                 </div>
                 ${precioColumna(disco)}
-                ${disco.canciones ? `<button class="disco-delete-btn" style="color:#e6b800;opacity:0.85;font-size:0.85rem" onclick="event.stopPropagation(); verCanciones('${disco.id}')" title="Ver canciones">🎵</button>` : ''}
                 <button class="disco-delete-btn" onclick="event.stopPropagation(); eliminarDisco('${disco.id}')" title="Eliminar">✕</button>
             </div>
         `;

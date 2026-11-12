@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mis Discos v0.9.41</title>
-    <link rel="stylesheet" href="styles.css?v=0.9.41">
+    <title>Mis Discos v0.9.42</title>
+    <link rel="stylesheet" href="styles.css?v=0.9.42">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1c1c20">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,6 +20,7 @@
             <input type="password" id="login-password" placeholder="PIN" maxlength="8" autofocus>
             <button id="btn-login" class="btn-primary">Entrar</button>
             <div id="login-error" class="login-error hidden">Contraseña incorrecta</div>
+            <div style="margin-top:20px;font-size:0.72rem;color:var(--text-secondary);opacity:0.75;letter-spacing:0.08em">Mis Discos v0.9.42</div>
         </div>
     </div>
 
@@ -27,7 +28,7 @@
     <div class="app hidden" id="app-main">
         <!-- Header -->
         <header class="app-header">
-            <h1>Mis Discos</h1>
+            <h1>Mis Discos <span style="-webkit-text-fill-color:var(--text-secondary);color:var(--text-secondary);font-size:0.6rem;font-weight:500;letter-spacing:0.5px;vertical-align:middle">v0.9.42</span></h1>
             <div class="header-btns">
                 <button id="btn-catalog" class="header-btn" title="Catálogo público">
                     <span id="catalog-icon">📢</span>
@@ -432,6 +433,8 @@
                         <button class="sort-btn" data-sort="banda">Banda</button>
                         <button class="sort-btn" data-sort="album">Álbum</button>
                         <button class="sort-btn" data-sort="anio">Año</button>
+                        <button class="sort-btn" data-sort="precio-asc">Precio ↑</button>
+                        <button class="sort-btn" data-sort="precio-desc">Precio ↓</button>
                     </div>
                     <span class="disc-count" id="disc-count"></span>
                 </div>
@@ -476,7 +479,7 @@
         </nav>
     </div> <!-- cierra app-main -->
 
-    <script src="app.js?v=0.9.41"></script>
+    <script src="app.js?v=0.9.42"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');
